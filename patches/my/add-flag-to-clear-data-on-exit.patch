@@ -12,4 +12,4 @@
 +         chrome_browsing_data_remover::DATA_TYPE_PASSWORDS;
  }
  
- uint64_t GetOriginTypeMask(const base::Value& data_types) {
+ uint64_t GetOriginTypeMask(const base::Value::List& data_types) {
