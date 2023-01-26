@@ -166,7 +166,7 @@ def main():
     downloads_cache = _ROOT_DIR / 'build' / 'download_cache'
     domsubcache = _ROOT_DIR / 'build' / 'domsubcache.tar.gz'
 
-    '''# Setup environment
+    # Setup environment
     source_tree.mkdir(parents=True, exist_ok=True)
     downloads_cache.mkdir(parents=True, exist_ok=True)
     _make_tmp_paths()
@@ -216,7 +216,7 @@ def main():
         _ROOT_DIR / 'ungoogled-chromium' / 'domain_substitution.list',
         source_tree,
         domsubcache
-    )'''
+    )
 
     # Output args.gn
     (source_tree / 'out/Default').mkdir(parents=True)
