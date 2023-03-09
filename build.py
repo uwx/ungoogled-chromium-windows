@@ -210,14 +210,6 @@ def main():
     # Apply patches manually
     input("Apply patch, PGO, and download LLVM.\nPress Enter to continue...")
 
-    # Substitute domains
-    domain_substitution.apply_substitution(
-        _ROOT_DIR / 'ungoogled-chromium' / 'domain_regex.list',
-        _ROOT_DIR / 'ungoogled-chromium' / 'domain_substitution.list',
-        source_tree,
-        domsubcache
-    )
-
     # Output args.gn
     (source_tree / 'out/Default').mkdir(parents=True)
     gn_flags = (_ROOT_DIR / 'ungoogled-chromium' / 'flags.gn').read_text(encoding=ENCODING)
