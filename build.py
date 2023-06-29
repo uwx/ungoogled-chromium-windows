@@ -199,7 +199,7 @@ def main():
     _download_esbuild(source_tree, downloads_cache, args.disable_ssl_verification, extractors)
 
     # Prune binaries
-    unremovable_files = prune_binaries.prune_dir(
+    unremovable_files = prune_binaries.prune_files(
         source_tree,
         (_ROOT_DIR / 'ungoogled-chromium' / 'pruning.list').read_text(encoding=ENCODING).splitlines()
     )
