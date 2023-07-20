@@ -2,28 +2,11 @@
 
 Windows packaging for [ungoogled-chromium](//github.com/Eloston/ungoogled-chromium).
 
-**This version contains some customizations (`patches/my`). Please remove those patches or use "update" branch for the vanilla ungoogled-chromium-windows.**
-
-## Official Build, GPO, and ThinLTO
-
-LLVM is upgraded to 13.0.0, otherwise it crashes at the "ThinLTO Bitcode Writer" pass. 
-
-`llvm-pdbutil` and `llvm-undname` have to be manually compiled from source code as they are not shipped with the LLVM distribution. 
-
-To download the PGO profile for Win64:
-
-```cmd
-# From a cmd.exe shell, run the command gclient (without arguments).
-# On first run, gclient will install all the Windows-specific bits needed to work with the code, including msysgit and python.
-set PATH=path\to\depot_tools;%PATH%
-python3 build/src/tools/update_pgo_profiles.py --target=win64 update --gs-url-base=chromium-optimization-profiles/pgo_profiles
-```
-
-**Note: Please run the PGO update script before domain substitution.**
-
 ## Downloads
 
 [Download binaries from the Contributor Binaries website](//ungoogled-software.github.io/ungoogled-chromium-binaries/).
+
+Or install using `winget install --id=eloston.ungoogled-chromium -e`.
 
 **Source Code**: It is recommended to use a tag via `git checkout` (see building instructions below). You may also use `master`, but it is for development and may not be stable.
 
@@ -32,17 +15,6 @@ python3 build/src/tools/update_pgo_profiles.py --target=win64 update --gs-url-ba
 Google only supports [Windows 10 x64 or newer](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/docs/windows_build_instructions.md#system-requirements). These instructions are tested on Windows 10 Pro x64.
 
 NOTE: The default configuration will build 64-bit binaries for maximum security (TODO: Link some explanation). This can be changed to 32-bit by setting `target_cpu` to `"x86"` in `flags.windows.gn`.
-
-## Version Tips
-
-- python
-  - 3.9.7 (supported)
-  - 3.10.0 (unsupported)
-- windows sdk
-  - 10.0.19041.0 (supported)
-  - 10.0.20348.0 (unsupported)
-  - 10.0.22000.0 (unsupported)
-
 
 ### Setting up the build environment
 
@@ -61,28 +33,31 @@ NOTE: The default configuration will build 64-bit binaries for maximum security 
 
 #### Other build requirements
 
-**IMPORTANT**: Currently, the `MAX_PATH` path length restriction (which is 260 characters by default) must be lifted in for our Python build scripts. This can be lifted in Windows 10 (v1607 or newer) with the official installer for Python 3.6 or newer (you will see a button at the end of installation to do this). See [Issue #345](https://github.com/Eloston/ungoogled-chromium/issues/345) for other methods for other Windows versions.
+**IMPORTANT**: Currently, the `MAX_PATH` path length restriction (which is 260 characters by default) must be lifted in for our Python build scripts. This can be lifted in Windows 10 (v1607 or newer) with the official installer for Python 3.6 or newer (you will see a button at the end of installation to do this). See [Issue #345](https://github.com/Eloston/ungoogled-chromium/issues/345) for other methods for older Windows versions.
 
 1. Setup the following:
-
-    * 7-zip
-    * Python 3.6+ (for build and packaging scripts used below)
-        * At the end of the Python installer, click the button to lift the `MAX_PATH` length restriction.
+    * 7-Zip
+    * Python 3.6 - 3.9 or 3.10.2+ (for build and packaging scripts used below); Python 3.11 and above is not supported.
+    * If you don't plan on using the Microsoft Store version of Python:
+    	* Check "Add python.exe to PATH" before install.
+      	* At the end of the Python installer, click the button to lift the `MAX_PATH` length restriction.  
+        * Check that your `PATH` does not contain the `python3` wrapper shipped by Windows, as it will only prompt you to install Python from the Microsoft Store and exit. See [this question on stackoverflow.com](https://stackoverflow.com/questions/57485491/python-python3-executes-in-command-prompt-but-does-not-run-correctly)
+        * Ensure that your Python directory either has a copy of Python named "python3.exe" or a symlink linking to the Python executable.
+   * Make sure to lift the `MAX_PATH` length restriction, either by clicking the button at the end of the Python installer or by [following these instructions](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry#:~:text=Enable,Later).
     * Git (to fetch all required ungoogled-chromium scripts)
         * During setup, make sure "Git from the command line and also from 3rd-party software" is selected. This is usually the recommended option.
 
 ### Building
 
-NOTE: The commands below assume the `py` command was installed by Python 3 into `PATH`. If this is not the case, then substitute it with `python3`.
-
 Run in `cmd.exe` (as administrator):
 
 ```cmd
 git clone --recurse-submodules https://github.com/ungoogled-software/ungoogled-chromium-windows.git
+cd ungoogled-chromium-windows
 # Replace TAG_OR_BRANCH_HERE with a tag or branch name
 git checkout --recurse-submodules TAG_OR_BRANCH_HERE
-py build.py
-py package.py
+python3 build.py
+python3 package.py
 ```
 
 A zip archive and an installer will be created under `build`.
@@ -90,7 +65,9 @@ A zip archive and an installer will be created under `build`.
 **NOTE**: If the build fails, you must take additional steps before re-running the build:
 
 * If the build fails while downloading the Chromium source code (which is during `build.py`), it can be fixed by removing `build\download_cache` and re-running the build instructions.
-* If the build fails at any other point during `build.py`, it can be fixed by removing `build\src` and re-running the build instructions. This will clear out all the code used by the build, and any files generated by the build.
+* If the build fails at any other point during `build.py`, it can be fixed by removing everything under `build` other than `build\download_cache` and re-running the build instructions. This will clear out all the code used by the build, and any files generated by the build.
+
+An efficient way to delete large amounts of files is using `Remove-Item PATH -Recurse -Force`. Be careful however, files deleted by that command will be permanently lost.
 
 ## Developer info
 
