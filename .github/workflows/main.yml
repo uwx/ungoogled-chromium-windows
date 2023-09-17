@@ -5,7 +5,6 @@ on:
       - '*'
 jobs:
   build:
-    runs-on: windows-2019
     strategy:
       matrix:
         x86: [true, false]
