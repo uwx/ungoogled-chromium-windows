@@ -1,0 +1,86 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      x86:
+        required: false
+        default: false
+        type: boolean
+    outputs:
+      finished:
+        value: ${{ jobs.build-12.outputs.finished }}
+
+jobs:
+  build-1:
+    uses: ./.github/workflows/step.yml
+    with:
+      finished: false
+      first: true
+      x86: ${{ inputs.x86 }}
+  build-2:
+    needs: build-1
+    uses: ./.github/workflows/step.yml
+    with:
+      finished: ${{ join(needs.*.outputs.finished) }}
+      x86: ${{ inputs.x86 }}
+  build-3:
+    needs: build-2
+    uses: ./.github/workflows/step.yml
+    with:
+      finished: ${{ join(needs.*.outputs.finished) }}
+      x86: ${{ inputs.x86 }}
+  build-4:
+    needs: build-3
+    uses: ./.github/workflows/step.yml
+    with:
+      finished: ${{ join(needs.*.outputs.finished) }}
+      x86: ${{ inputs.x86 }}
+  build-5:
+    needs: build-4
+    uses: ./.github/workflows/step.yml
+    with:
+      finished: ${{ join(needs.*.outputs.finished) }}
+      x86: ${{ inputs.x86 }}
+  build-6:
+    needs: build-5
+    uses: ./.github/workflows/step.yml
+    with:
+      finished: ${{ join(needs.*.outputs.finished) }}
+      x86: ${{ inputs.x86 }}
+  build-7:
+    needs: build-6
+    uses: ./.github/workflows/step.yml
+    with:
+      finished: ${{ join(needs.*.outputs.finished) }}
+      x86: ${{ inputs.x86 }}
+  build-8:
+    needs: build-7
+    uses: ./.github/workflows/step.yml
+    with:
+      finished: ${{ join(needs.*.outputs.finished) }}
+      x86: ${{ inputs.x86 }}
+  build-9:
+    needs: build-8
+    uses: ./.github/workflows/step.yml
+    with:
+      finished: ${{ join(needs.*.outputs.finished) }}
+      x86: ${{ inputs.x86 }}
+  build-10:
+    needs: build-9
+    uses: ./.github/workflows/step.yml
+    with:
+      finished: ${{ join(needs.*.outputs.finished) }}
+      x86: ${{ inputs.x86 }}
+  build-11:
+    needs: build-10
+    uses: ./.github/workflows/step.yml
+    with:
+      finished: ${{ join(needs.*.outputs.finished) }}
+      x86: ${{ inputs.x86 }}
+  build-12:
+    needs: build-11
+    uses: ./.github/workflows/step.yml
+    with:
+      finished: ${{ join(needs.*.outputs.finished) }}
+      x86: ${{ inputs.x86 }}
