@@ -20,7 +20,7 @@ index 9c5725c3ffbbb..57c8cc9f905d3 100644
  
      # An import limit of 30 has better performance (per speedometer) and lower
      # binary size than the default setting of 100.
-@@ -723,11 +723,15 @@ config("compiler") {
+@@ -723,10 +723,14 @@ config("compiler") {
        ldflags += [
          "/opt:lldltojobs=all",
          "-mllvm:-import-instr-limit=$import_instr_limit",
@@ -30,7 +30,6 @@ index 9c5725c3ffbbb..57c8cc9f905d3 100644
 +        # "/lldltocache:" +
 +        #     rebase_path("$root_out_dir/thinlto-cache", root_build_dir),
 +        # "/lldltocachepolicy:$cache_policy",
-         "-mllvm:-disable-auto-upgrade-debug-info",
        ]
 +      ldflags += [ "-mllvm:-enable-gvn-hoist", ]
 +      ldflags += [ "-mllvm:-loop-rotate-multi", ]
