@@ -14,12 +14,17 @@ on:
         required: false
         default: false
         type: boolean
+      num:
+        required: false
+        default: -1
+        type: number
     outputs:
       finished:
         value: ${{ jobs.reusable_workflow_job.outputs.finished }}
 
 jobs:
   reusable_workflow_job:
+    name: ${{ inputs.x86 && 'x86 build' || 'x64 build' }}, step ${{ inputs.num }}
     runs-on: windows-2019
     steps:
       - name: Checkout
