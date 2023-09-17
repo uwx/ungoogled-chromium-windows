@@ -24,75 +24,75 @@ jobs:
     uses: ./.github/workflows/step.yml
     with:
       num: 2
-      finished: ${{ join(needs.*.outputs.finished) }}
+      finished: ${{ join(needs.*.outputs.finished) == 'true' }}
       x86: ${{ inputs.x86 }}
   build-3:
     needs: build-2
     uses: ./.github/workflows/step.yml
     with:
       num: 3
-      finished: ${{ join(needs.*.outputs.finished) }}
+      finished: ${{ join(needs.*.outputs.finished) == 'true' }}
       x86: ${{ inputs.x86 }}
   build-4:
     needs: build-3
     uses: ./.github/workflows/step.yml
     with:
       num: 4
-      finished: ${{ join(needs.*.outputs.finished) }}
+      finished: ${{ join(needs.*.outputs.finished) == 'true' }}
       x86: ${{ inputs.x86 }}
   build-5:
     needs: build-4
     uses: ./.github/workflows/step.yml
     with:
       num: 5
-      finished: ${{ join(needs.*.outputs.finished) }}
+      finished: ${{ join(needs.*.outputs.finished) == 'true' }}
       x86: ${{ inputs.x86 }}
   build-6:
     needs: build-5
     uses: ./.github/workflows/step.yml
     with:
       num: 6
-      finished: ${{ join(needs.*.outputs.finished) }}
+      finished: ${{ join(needs.*.outputs.finished) == 'true' }}
       x86: ${{ inputs.x86 }}
   build-7:
     needs: build-6
     uses: ./.github/workflows/step.yml
     with:
       num: 7
-      finished: ${{ join(needs.*.outputs.finished) }}
+      finished: ${{ join(needs.*.outputs.finished) == 'true' }}
       x86: ${{ inputs.x86 }}
   build-8:
     needs: build-7
     uses: ./.github/workflows/step.yml
     with:
       num: 8
-      finished: ${{ join(needs.*.outputs.finished) }}
+      finished: ${{ join(needs.*.outputs.finished) == 'true' }}
       x86: ${{ inputs.x86 }}
   build-9:
     needs: build-8
     uses: ./.github/workflows/step.yml
     with:
       num: 9
-      finished: ${{ join(needs.*.outputs.finished) }}
+      finished: ${{ join(needs.*.outputs.finished) == 'true' }}
       x86: ${{ inputs.x86 }}
   build-10:
     needs: build-9
     uses: ./.github/workflows/step.yml
     with:
       num: 10
-      finished: ${{ join(needs.*.outputs.finished) }}
+      finished: ${{ join(needs.*.outputs.finished) == 'true' }}
       x86: ${{ inputs.x86 }}
   build-11:
     needs: build-10
     uses: ./.github/workflows/step.yml
     with:
       num: 11
-      finished: ${{ join(needs.*.outputs.finished) }}
+      finished: ${{ join(needs.*.outputs.finished) == 'true' }}
       x86: ${{ inputs.x86 }}
   build-12:
     needs: build-11
     uses: ./.github/workflows/step.yml
     with:
       num: 12
-      finished: ${{ join(needs.*.outputs.finished) }}
+      finished: ${{ join(needs.*.outputs.finished) == 'true' }}
       x86: ${{ inputs.x86 }}
