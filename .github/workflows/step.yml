@@ -28,15 +28,19 @@ jobs:
     runs-on: windows-2019
     steps:
       - name: Checkout
+        if: '!inputs.finished'
         uses: actions/checkout@v3
         with:
           submodules: 'recursive'
       - name: Init
+        if: '!inputs.finished'
         run: Copy-Item -Path . -Destination "C:\ungoogled-chromium-windows" -Recurse
       - name: Setup Stage
+        if: '!inputs.finished'
         run: npm install
         working-directory: ./.github/actions/stage
       - name: Run Stage
+        if: '!inputs.finished'
         id: stage
         uses: ./.github/actions/stage
         with:
@@ -44,4 +48,4 @@ jobs:
           from_artifact: ${{ !inputs.first }}
           x86: ${{ inputs.x86 }}
     outputs:
-      finished: ${{ steps.stage.outputs.finished }}
+      finished: ${{ inputs.finished || steps.stage.outputs.finished }}
