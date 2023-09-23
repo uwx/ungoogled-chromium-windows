@@ -113,7 +113,7 @@ jobs:
           path: ${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
           retention-days: 5
 
-  build:
+  build-chromium:
     strategy:
       matrix:
         x86: [true, false]
@@ -124,7 +124,7 @@ jobs:
       x86: ${{ matrix.x86 }}
 
   publish-release:
-    needs: build
+    needs: build-chromium
     runs-on: ubuntu-latest
     steps:
       - name: Download package
