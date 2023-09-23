@@ -115,6 +115,15 @@ jobs:
           path: '**'
           retention-days: 5
 
+      #- name: Publish release
+      #  id: publish
+      #  uses: softprops/action-gh-release@cd28b0f5ee8571b76cfdaa62a30d51d752317477
+      #  with:
+      #    fail_on_unmatched_files: true
+      #    tag_name: llvm-${{ matrix.name }}-${{ matrix.ref }}
+      #    files: |
+      #      TODO*
+
       #- name: Install abi-compliance-checker
       #  run: |
       #    sudo apt-get install abi-dumper autoconf pkg-config

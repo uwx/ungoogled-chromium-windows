@@ -7,9 +7,6 @@ const artifact = require('@actions/artifact');
 const glob = require('@actions/glob');
 const path = require('path/win32');
 
-// Where the repository is cloned to
-const basedir = 'C:\\ungoogled-chromium-windows';
-
 const { extractTar, createTar } = require('./tar');
 
 /**
@@ -21,6 +18,9 @@ function delay(ms) {
 }
 
 async function run() {
+    // Where the repository is cloned to
+    const basedir = process.env.PROJECT_LOCATION || 'C:\\ungoogled-chromium-windows';
+
     process.on('SIGINT', function() {
     });
 

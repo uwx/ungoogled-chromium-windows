@@ -141,6 +141,11 @@ def main():
         '--x86',
         action='store_true'
     )
+    parser.add_argument(
+        '--no-build',
+        dest='no_build',
+        action='store_true'
+    )
 
     class Args(TypedDict):
         ci: bool
@@ -148,6 +153,7 @@ def main():
         sevenz_path: str
         winrar_path: str
         disable_ssl_verification: bool
+        no_build: bool
 
     args: Args = parser.parse_args()
 
@@ -285,7 +291,7 @@ def main():
                 None
             )
 
-    if not args.ci or not (source_tree / 'out/Default').exists():
+    if (not args.ci or not (source_tree / 'out/Default').exists()) and not args.no_build:
         # Output args.gn
         with group('Output args.gn'):
             (source_tree / 'out/Default').mkdir(parents=True)
@@ -300,7 +306,7 @@ def main():
     # Enter source tree to run build commands
     os.chdir(source_tree)
 
-    if not args.ci or not os.path.exists('out\\Default\\gn.exe'):
+    if (not args.ci or not os.path.exists('out\\Default\\gn.exe')) and not args.no_build:
         # Run GN bootstrap
         with group('Run gn bootstrap'):
             _run_build_process(
@@ -312,7 +318,7 @@ def main():
             _run_build_process('out\\Default\\gn.exe', 'gen', 'out\\Default', '--fail-on-unused-args')
 
     # Run ninja
-    if args.ci:
+    if args.ci and not args.no_build:
         with group('Run ninja'):
             try:
                 _run_build_process_timeout('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',

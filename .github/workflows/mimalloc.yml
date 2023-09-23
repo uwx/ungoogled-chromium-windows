@@ -1,0 +1,60 @@
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform (Win32 or x64)
+        default: x64
+        type: string
+      configuration:
+        description: Configuration (Debug or Release)
+        default: Release
+        type: string
+      ref:
+        description: Mimalloc ref to build
+        default: master
+        type: string
+  workflow_call:
+    inputs:
+      platform:
+        description: Platform (Win32 or x64)
+        default: x64
+        type: string
+      configuration:
+        description: Configuration (Debug or Release)
+        default: Release
+        type: string
+      ref:
+        description: Mimalloc ref to build
+        default: master
+        type: string
+    outputs:
+      artifact:
+        description: Artifact name
+        value: mimalloc-${{ inputs.platform }}-${{ inputs.configuration }}-${{ inputs.ref }}
+
+jobs:
+  build_mimalloc:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: microsoft/mimalloc
+          path: _mimalloc
+          ref: ${{ inputs.ref }}
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.1
+
+      - name: Use NuGet
+        uses: nuget/setup-nuget@v1
+
+      - name: Restore nuget packages for all solutions
+        run: msbuild "ide/vs2022/mimalloc.sln" /p:configuration=${{ inputs.configuration }} /p:platform=${{ inputs.platform }} /t:restore
+        working-directory: ${{ github.workspace }}/_mimalloc
+
+      - name: Upload compiled results
+        id: upload-artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: mimalloc-${{ inputs.platform }}-${{ inputs.configuration }}-${{ inputs.ref }}
+          path:  ${{ github.workspace }}/_mimalloc/out-${{ inputs.platform }}/${{ inputs.configuration }}/mimalloc-static.lib
