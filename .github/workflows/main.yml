@@ -77,6 +77,9 @@ jobs:
             ${{ env.PROJECT_LOCATION }}\build\download_cache
             ${{ env.PROJECT_LOCATION }}\build\src\third_party
           key: ${{ env.CACHE_PREFIX }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
+          restore-keys: |
+            ${{ env.CACHE_PREFIX }}-downloads-partial-including-extracted-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
+            ${{ env.CACHE_PREFIX }}-downloads-partial-download-only-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
 
       - name: Setup PGO profile cache
         uses: actions/cache@v3
@@ -85,6 +88,8 @@ jobs:
             **.profdata
             ${{ env.PROJECT_LOCATION }}\**.profdata
           key: ${{ env.CACHE_PREFIX }}-pgo-${{ hashFiles('**.profdata') }}
+          restore-keys: |
+            ${{ env.CACHE_PREFIX }}-pgo-
 
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
@@ -106,6 +111,7 @@ jobs:
         run: Copy-Item -Path $env:PROJECT_LOCATION -Filter *.profdata -Destination $env:GITHUB_WORKSPACE -Recurse
 
       - name: Build Chromium LLVM
+        id: build-llvm
         run: python tools/clang/scripts/build.py --bootstrap --without-android --without-fuchsia --disable-asserts --thinlto --pgo --bolt --llvm-force-head-revision
 
       - name: Upload compiled results
@@ -126,14 +132,23 @@ jobs:
             **\*.rej
           retention-days: 90
 
-      - name: Fallback save downloads cache on build failure
-        if: failure()
+      # Don't save LLVM data if LLVM build may have failed
+      - name: Fallback save downloads cache on build failure (1)
+        if: failure() && (steps.build-llvm.outcome == 'success' || steps.build-llvm.outcome == 'skipped')
         uses: actions/cache/save@v3
         with:
           path: |
             ${{ env.PROJECT_LOCATION }}\build\download_cache
             ${{ env.PROJECT_LOCATION }}\build\src\third_party
-          key: ${{ env.CACHE_PREFIX }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
+          key: ${{ env.CACHE_PREFIX }}-downloads-partial-including-extracted-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
+
+      - name: Fallback save downloads cache on build failure (2)
+        if: failure() && (steps.build-llvm.outcome == 'failure' || steps.build-llvm.outcome == 'cancelled')
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            ${{ env.PROJECT_LOCATION }}\build\download_cache
+          key: ${{ env.CACHE_PREFIX }}-downloads-partial-download-only-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
 
       - name: Fallback save PGO cache on build failure
         if: failure() && steps.copy-pgo.outcome == 'success'

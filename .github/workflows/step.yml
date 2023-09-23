@@ -84,18 +84,23 @@ jobs:
             ${{ env.PROJECT_LOCATION }}\build\download_cache
             ${{ env.PROJECT_LOCATION }}\build\src\third_party
           key: ${{ env.CACHE_PREFIX }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
+          restore-keys: |
+            ${{ env.CACHE_PREFIX }}-downloads-partial-including-extracted-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
+            ${{ env.CACHE_PREFIX }}-downloads-partial-download-only-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
 
       - name: Setup PGO profile cache
         uses: actions/cache@v3
         with:
           path: '**.profdata'
-          key: ${{ env.CACHE_PREFIX }}-${{ inputs.x86 && 'x86' || 'x64' }}-pgo-${{ hashFiles('**.profdata') }}
+          key: ${{ env.CACHE_PREFIX }}-pgo-${{ hashFiles('**.profdata') }}
+          restore-keys: |
+            ${{ env.CACHE_PREFIX }}-pgo-
 
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           max-size: 5G
-          key: sccache-${{ env.CACHE_PREFIX }}-${{ inputs.x86 && 'x86' || 'x64' }}
+          key: sccache-chromium-${{ env.CACHE_PREFIX }}-${{ inputs.x86 && 'x86' || 'x64' }}
           variant: sccache
 
       - name: Install node.js dependencies
