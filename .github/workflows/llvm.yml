@@ -1,4 +1,4 @@
-name: Build default LLVM from llvm/llvm-project
+name: Build LLVM from llvm/llvm-project
 
 on:
   workflow_dispatch:
