@@ -51,14 +51,14 @@ def _get_vcvars_path(name='64'):
     """
     vswhere_exe = '%ProgramFiles(x86)%\\Microsoft Visual Studio\\Installer\\vswhere.exe'
     result = subprocess.run(
-        '"{}" -prerelease -latest -property installationPath'.format(vswhere_exe),
+        f'"{vswhere_exe}" -prerelease -latest -property installationPath',
         shell=True,
         check=True,
         stdout=subprocess.PIPE,
         universal_newlines=True)
-    vcvars_path = Path(result.stdout.strip(), 'VC/Auxiliary/Build/vcvars{}.bat'.format(name))
+    vcvars_path = Path(result.stdout.strip(), f'VC/Auxiliary/Build/vcvars{name}.bat')
     if not vcvars_path.exists():
-        raise RuntimeError('Could not find vcvars batch script in expected location: {}'.format(vcvars_path))
+        raise RuntimeError(f'Could not find vcvars batch script in expected location: {vcvars_path}')
     return vcvars_path
 
 def _run_build_process(*args, **kwargs):
@@ -66,7 +66,7 @@ def _run_build_process(*args, **kwargs):
     Runs the subprocess with the correct environment variables for building
     """
     # Add call to set VC variables
-    cmd_input = ['call "%s" >nul' % _get_vcvars_path()]
+    cmd_input = [f'call "{_get_vcvars_path()}" >nul']
     cmd_input.append('set DEPOT_TOOLS_WIN_TOOLCHAIN=0')
     cmd_input.append(' '.join(map('"{}"'.format, args)))
     cmd_input.append('exit\n')
@@ -81,7 +81,7 @@ def _run_build_process_timeout(*args, timeout):
     Runs the subprocess with the correct environment variables for building
     """
     # Add call to set VC variables
-    cmd_input = ['call "%s" >nul' % _get_vcvars_path()]
+    cmd_input = [f'call "{_get_vcvars_path()}" >nul']
     cmd_input.append('set DEPOT_TOOLS_WIN_TOOLCHAIN=0')
     cmd_input.append(' '.join(map('"{}"'.format, args)))
     cmd_input.append('exit\n')
@@ -176,7 +176,7 @@ def main():
             try:
                 downloads.check_downloads(download_info, downloads_cache)
             except downloads.HashMismatchError as exc:
-                error('File checksum does not match: %s' % exc)
+                error(f'File checksum does not match: {exc}')
                 exit(1)
 
         # Unpack downloads
@@ -192,7 +192,7 @@ def main():
             # https://chromium.googlesource.com/chromium/src/+/master/tools/update_pgo_profiles.py
             pgo_target = 'win32' if args.x86 else 'win64' # https://github.com/chromium/chromium/blob/45530e7cae53c526cd29ad6f12ec26f6cc09c8bf/DEPS#L5551-L5572
             pgo_dir = source_tree / 'chrome' / 'build'
-            state_file = pgo_dir / ('%s.pgo.txt' % pgo_target)
+            state_file = pgo_dir / (f'{pgo_target}.pgo.txt')
             profile_name = None
             with open(state_file, 'r') as f:
                 profile_name = f.read().strip()
@@ -200,11 +200,11 @@ def main():
             pgo_profile_dir = pgo_dir / 'pgo_profiles'
             profile_path = pgo_profile_dir / profile_name
             if not os.path.isfile(profile_path):
-                with requests.get('https://commondatastorage.googleapis.com/chromium-optimization-profiles/pgo_profiles/%s' % profile_name) as downloaded:
+                with requests.get(f'https://commondatastorage.googleapis.com/chromium-optimization-profiles/pgo_profiles/{profile_name}') as downloaded:
                     with open(profile_path, 'wb') as dest:
                         dest.write(downloaded.content)
             else:
-                action.notice('Found existing PGO profile called %s' % profile_name)
+                action.notice(f'Found existing PGO profile called {profile_name}')
                 os.utime(profile_path, None)
 
         # Download esbuild
