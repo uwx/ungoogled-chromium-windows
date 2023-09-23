@@ -27,19 +27,57 @@ jobs:
     name: ${{ inputs.x86 && 'x86 build' || 'x64 build' }}, step ${{ inputs.num }}
     runs-on: windows-2019
     steps:
-      - name: Checkout
+      - name: Checkout repository
         if: '!inputs.finished'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
-      - name: Init
+          submodules: recursive
+          path: C:\ungoogled-chromium-windows
+
+      - name: Install pnpm
         if: '!inputs.finished'
-        run: Copy-Item -Path . -Destination "C:\ungoogled-chromium-windows" -Recurse
-      - name: Setup Stage
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
         if: '!inputs.finished'
-        run: npm install
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        if: '!inputs.finished'
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-${{ inputs.x86 && 'x86' || 'x64' }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ inputs.x86 && 'x86' || 'x64' }}-pnpm-store-
+
+      - name: Setup third-party tool cache
+        if: '!inputs.finished'
+        uses: actions/cache@v3
+        with:
+          path: |
+            ./build/download_cache
+            ./build/src/third_party
+          key: ${{ runner.os }}-${{ inputs.x86 && 'x86' || 'x64' }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
+
+      - name: Setup PGO profile cache
+        if: '!inputs.finished'
+        uses: actions/cache@v3
+        with:
+          path: '**.profdata'
+          key: ${{ runner.os }}-${{ inputs.x86 && 'x86' || 'x64' }}-pgo-${{ hashFiles('**.profdata') }}
+
+      - name: Install node.js dependencies
+        if: '!inputs.finished'
+        run: pnpm install
         working-directory: ./.github/actions/stage
-      - name: Run Stage
+
+      - name: Run stage
         if: '!inputs.finished'
         id: stage
         uses: ./.github/actions/stage
