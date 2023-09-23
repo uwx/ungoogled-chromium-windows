@@ -174,7 +174,9 @@ def main():
             log.error(message, stacklevel=2)
 
     if args.ci:
-        log.setLevel(logging.DEBUG)
+        log.setLevel(logging.NOTSET)
+        for x in log.handlers:
+            x.setLevel(logging.NOTSET)
         # https://stackoverflow.com/a/56944256
         class CustomFormatter(logging.Formatter):
             grey = "\x1b[38;20m"
