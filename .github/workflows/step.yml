@@ -38,7 +38,7 @@ jobs:
         run: |
           Copy-Item -Path . -Destination "C:\ungoogled-chromium-windows" -Recurse
           Set-Location -Path C:\ungoogled-chromium-windows
-          Get-ChildItem -Path "C:\ungoogled-chromium-windows" -Include * -File -Recurse | foreach { Remove-Item $_ -ErrorAction SilentlyContinue }
+          Get-ChildItem -Path $env:GITHUB_WORKSPACE -Include * -File -Recurse | foreach { Remove-Item $_ -ErrorAction SilentlyContinue }
 
       - name: Install pnpm
         if: '!inputs.finished'
