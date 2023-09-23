@@ -24,6 +24,7 @@ import urllib.request
 import urllib.parse
 import ctypes
 from pathlib import Path
+import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / 'ungoogled-chromium' / 'utils'))
 import downloads
@@ -201,7 +202,7 @@ def main():
     # Set common variables
     source_tree = _ROOT_DIR / 'build' / 'src'
     downloads_cache = _ROOT_DIR / 'build' / 'download_cache'
-    domsubcache = _ROOT_DIR / 'build' / 'domsubcache.tar.gz'
+    # domsubcache = _ROOT_DIR / 'build' / 'domsubcache.tar.gz'
 
     if not args.ci or not (source_tree / 'BUILD.gn').exists():
         # Setup environment
@@ -225,6 +226,25 @@ def main():
             get_logger().error('File checksum does not match: %s', exc)
             exit(1)
 
+        get_logger().info('Retrieving PGO profiles...')
+        # Retrieve PGO profiles manually (not with gclient)
+        # https://chromium.googlesource.com/chromium/src/+/master/tools/update_pgo_profiles.py
+        pgo_target = 'win32' if args.x86 else 'win64' # https://github.com/chromium/chromium/blob/45530e7cae53c526cd29ad6f12ec26f6cc09c8bf/DEPS#L5551-L5572
+        pgo_dir = source_tree / 'chrome' / 'build'
+        state_file = pgo_dir / ('%s.pgo.txt' % pgo_target)
+        profile_name = None
+        with open(state_file, 'r') as f:
+            profile_name = f.read().strip()
+
+        pgo_profile_dir = pgo_dir / 'pgo_profiles'
+        profile_path = pgo_profile_dir / profile_name
+        if not os.path.isfile(profile_path):
+            with requests.get('https://commondatastorage.googleapis.com/chromium-optimization-profiles/pgo_profiles/%s' % profile_name) as downloaded:
+                with open(profile_path, 'wb') as dest:
+                    dest.write(downloaded.content)
+        else:
+            os.utime(profile_path, None)
+
         # Unpack downloads
         extractors = {
             ExtractorEnum.SEVENZIP: args.sevenz_path,
@@ -234,7 +254,7 @@ def main():
         downloads.unpack_downloads(download_info, downloads_cache, source_tree, extractors)
 
         # Download esbuild
-        _download_esbuild(source_tree, downloads_cache, args.disable_ssl_verification, extractors)
+        # _download_esbuild(source_tree, downloads_cache, args.disable_ssl_verification, extractors)
 
         # Prune binaries
         unremovable_files = prune_binaries.prune_files(
