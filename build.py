@@ -8,6 +8,9 @@
 ungoogled-chromium build script for Microsoft Windows
 """
 
+from typing import Any, Generator
+import github_action_utils as action
+
 import sys
 import time
 if sys.version_info.major < 3 or sys.version_info.minor < 6:
@@ -26,7 +29,9 @@ import ctypes
 from pathlib import Path
 import requests
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / 'ungoogled-chromium' / 'utils'))
+_ROOT_DIR = Path(__file__).resolve().parent
+
+sys.path.insert(0, str(_ROOT_DIR / 'ungoogled-chromium' / 'utils'))
 import downloads
 import domain_substitution
 import prune_binaries
@@ -34,9 +39,9 @@ import patches
 from _common import ENCODING, USE_REGISTRY, ExtractorEnum, get_logger
 sys.path.pop(0)
 
-_ROOT_DIR = Path(__file__).resolve().parent
 _PATCH_BIN_RELPATH = Path('third_party/git/usr/bin/patch.exe')
 
+log = get_logger()
 
 def _get_vcvars_path(name='64'):
     """
@@ -53,10 +58,8 @@ def _get_vcvars_path(name='64'):
         universal_newlines=True)
     vcvars_path = Path(result.stdout.strip(), 'VC/Auxiliary/Build/vcvars{}.bat'.format(name))
     if not vcvars_path.exists():
-        raise RuntimeError(
-            'Could not find vcvars batch script in expected location: {}'.format(vcvars_path))
+        raise RuntimeError('Could not find vcvars batch script in expected location: {}'.format(vcvars_path))
     return vcvars_path
-
 
 def _run_build_process(*args, **kwargs):
     """
@@ -100,7 +103,6 @@ def _run_build_process_timeout(*args, timeout):
                 proc.kill()
             raise KeyboardInterrupt
 
-
 def _make_tmp_paths():
     """Creates TMP and TEMP variable dirs so ninja won't fail"""
     tmp_path = Path(os.environ['TMP'])
@@ -109,66 +111,6 @@ def _make_tmp_paths():
     tmp_path = Path(os.environ['TEMP'])
     if not tmp_path.exists():
         tmp_path.mkdir()
-
-
-def _download_esbuild(source_tree, downloads_cache, disable_ssl_verification, extractors):
-    """Download esbuild if necessary"""
-    esbuild_file = source_tree / 'third_party' / 'devtools-frontend' / 'src' / 'third_party' / 'esbuild' / 'esbuild.exe'
-    if esbuild_file.exists():
-        return
-
-    with open(source_tree / 'DEPS', 'r', encoding='utf-8') as f:
-        content = f.read()
-
-    func = lambda x: x
-    local_vars = {}
-    exec(content, {'Str': func, 'Var': func, '__builtins__': {}}, local_vars)
-
-    deps = local_vars.get('deps', None)
-    if deps is None:
-        return
-    esbuild = deps.get('src/third_party/devtools-frontend/src/third_party/esbuild', None)
-    if esbuild is None:
-        return
-    info = esbuild['packages'][0]
-    # download x86 binary for better compatibility
-    package_name = info['package'].replace('${{platform}}', 'windows-386')
-    package_version = info['version']
-
-    # resolve version
-    params = urllib.parse.urlencode({
-        'package_name': package_name,
-        'version': package_version,
-    })
-    with urllib.request.urlopen('https://chrome-infra-packages.appspot.com/_ah/api/repo/v1/instance/resolve?' + params) as resp:
-        content = resp.read()
-    instance_id = json.loads(content)['instance_id']
-
-    # get download url
-    params = urllib.parse.urlencode({
-        'package_name': package_name,
-        'instance_id': instance_id,
-    })
-    with urllib.request.urlopen('https://chrome-infra-packages.appspot.com/_ah/api/repo/v1/instance?' + params) as resp:
-        content = resp.read()
-    url = json.loads(content)['fetch_url']
-
-    download_info = downloads.DownloadInfo([])
-    download_info._data.read_dict({
-        'esbuild': {
-            'version': instance_id,
-            'url': url.replace('%', '%%'),
-            'download_filename': 'esbuild-windows-386-%(version)s.zip',
-            'extractor': '7z',
-            'output_path': 'third_party/devtools-frontend/src/third_party/esbuild'
-        }
-    })
-
-    get_logger().info('Downloading esbuild...')
-    downloads.retrieve_downloads(download_info, downloads_cache, True, disable_ssl_verification)
-    get_logger().info('Unpacking esbuild...')
-    downloads.unpack_downloads(download_info, downloads_cache, source_tree, extractors)
-
 
 def main():
     """CLI Entrypoint"""
@@ -199,6 +141,18 @@ def main():
     )
     args = parser.parse_args()
 
+    def group(name: str) -> Generator[Any, None, None]:
+        def i():
+            log.info(name)
+            yield
+        return action.group(name) if args.ci else i()
+
+    def error(message: str):
+        if args.ci:
+            action.error(message, 'ungoogled-chromium build script')
+        else:
+            log.error(message)
+
     # Set common variables
     source_tree = _ROOT_DIR / 'build' / 'src'
     downloads_cache = _ROOT_DIR / 'build' / 'download_cache'
@@ -217,114 +171,120 @@ def main():
         ])
 
         # Retrieve downloads
-        get_logger().info('Downloading required files...')
-        downloads.retrieve_downloads(download_info, downloads_cache, True,
-                                              args.disable_ssl_verification)
-        try:
-            downloads.check_downloads(download_info, downloads_cache)
-        except downloads.HashMismatchError as exc:
-            get_logger().error('File checksum does not match: %s', exc)
-            exit(1)
+        with group('Downloading required files...'):
+            downloads.retrieve_downloads(download_info, downloads_cache, True, args.disable_ssl_verification)
+            try:
+                downloads.check_downloads(download_info, downloads_cache)
+            except downloads.HashMismatchError as exc:
+                error('File checksum does not match: %s' % exc)
+                exit(1)
 
         # Unpack downloads
-        extractors = {
-            ExtractorEnum.SEVENZIP: args.sevenz_path,
-            ExtractorEnum.WINRAR: args.winrar_path,
-        }
-        get_logger().info('Unpacking downloads...')
-        downloads.unpack_downloads(download_info, downloads_cache, source_tree, extractors)
+        with group('Unpacking downloads...'):
+            extractors = {
+                ExtractorEnum.SEVENZIP: args.sevenz_path,
+                ExtractorEnum.WINRAR: args.winrar_path,
+            }
+            downloads.unpack_downloads(download_info, downloads_cache, source_tree, extractors)
 
-        get_logger().info('Retrieving PGO profiles...')
-        # Retrieve PGO profiles manually (not with gclient)
-        # https://chromium.googlesource.com/chromium/src/+/master/tools/update_pgo_profiles.py
-        pgo_target = 'win32' if args.x86 else 'win64' # https://github.com/chromium/chromium/blob/45530e7cae53c526cd29ad6f12ec26f6cc09c8bf/DEPS#L5551-L5572
-        pgo_dir = source_tree / 'chrome' / 'build'
-        state_file = pgo_dir / ('%s.pgo.txt' % pgo_target)
-        profile_name = None
-        with open(state_file, 'r') as f:
-            profile_name = f.read().strip()
+        with group('Retrieving PGO profiles...'):
+            # Retrieve PGO profiles manually (not with gclient)
+            # https://chromium.googlesource.com/chromium/src/+/master/tools/update_pgo_profiles.py
+            pgo_target = 'win32' if args.x86 else 'win64' # https://github.com/chromium/chromium/blob/45530e7cae53c526cd29ad6f12ec26f6cc09c8bf/DEPS#L5551-L5572
+            pgo_dir = source_tree / 'chrome' / 'build'
+            state_file = pgo_dir / ('%s.pgo.txt' % pgo_target)
+            profile_name = None
+            with open(state_file, 'r') as f:
+                profile_name = f.read().strip()
 
-        pgo_profile_dir = pgo_dir / 'pgo_profiles'
-        profile_path = pgo_profile_dir / profile_name
-        if not os.path.isfile(profile_path):
-            with requests.get('https://commondatastorage.googleapis.com/chromium-optimization-profiles/pgo_profiles/%s' % profile_name) as downloaded:
-                with open(profile_path, 'wb') as dest:
-                    dest.write(downloaded.content)
-        else:
-            os.utime(profile_path, None)
+            pgo_profile_dir = pgo_dir / 'pgo_profiles'
+            profile_path = pgo_profile_dir / profile_name
+            if not os.path.isfile(profile_path):
+                with requests.get('https://commondatastorage.googleapis.com/chromium-optimization-profiles/pgo_profiles/%s' % profile_name) as downloaded:
+                    with open(profile_path, 'wb') as dest:
+                        dest.write(downloaded.content)
+            else:
+                action.notice('Found existing PGO profile called %s' % profile_name)
+                os.utime(profile_path, None)
 
         # Download esbuild
         # _download_esbuild(source_tree, downloads_cache, args.disable_ssl_verification, extractors)
 
         # Prune binaries
-        unremovable_files = prune_binaries.prune_files(
-            source_tree,
-            (_ROOT_DIR / 'ungoogled-chromium' / 'pruning.list').read_text(encoding=ENCODING).splitlines()
-        )
-        if unremovable_files:
-            get_logger().error('Files could not be pruned: %s', unremovable_files)
-            parser.exit(1)
-
-        # Apply patches manually
-        #input("Apply patch, PGO, and download LLVM.\nPress Enter to continue...")
+        with group('Prune binaries'):
+            unremovable_files = prune_binaries.prune_files(
+                source_tree,
+                (_ROOT_DIR / 'ungoogled-chromium' / 'pruning.list').read_text(encoding=ENCODING).splitlines()
+            )
+            if unremovable_files:
+                log.error('Files could not be pruned: %s', unremovable_files)
+                parser.exit(1)
 
         # Apply patches
-        # First, ungoogled-chromium-patches
-        patches.apply_patches(
-            patches.generate_patches_from_series(_ROOT_DIR / 'ungoogled-chromium' / 'patches', resolve=True),
-            source_tree,
-            patch_bin_path=(source_tree / _PATCH_BIN_RELPATH)
-        )
-        # Then Windows-specific patches
-        patches.apply_patches(
-            patches.generate_patches_from_series(_ROOT_DIR / 'patches', resolve=True),
-            source_tree,
-            patch_bin_path=(source_tree / _PATCH_BIN_RELPATH)
-        )
+        with group('Apply patches'):
+            # First, ungoogled-chromium-patches
+            patches.apply_patches(
+                patches.generate_patches_from_series(_ROOT_DIR / 'ungoogled-chromium' / 'patches', resolve=True),
+                source_tree,
+                patch_bin_path=(source_tree / _PATCH_BIN_RELPATH)
+            )
+            # Then Windows-specific patches
+            patches.apply_patches(
+                patches.generate_patches_from_series(_ROOT_DIR / 'patches', resolve=True),
+                source_tree,
+                patch_bin_path=(source_tree / _PATCH_BIN_RELPATH)
+            )
 
         # Substitute domains
-        domain_substitution.apply_substitution(
-            _ROOT_DIR / 'ungoogled-chromium' / 'domain_regex.list',
-            _ROOT_DIR / 'ungoogled-chromium' / 'domain_substitution.list',
-            source_tree,
-            None
-        )
+        with group('Substitute domains'):
+            domain_substitution.apply_substitution(
+                _ROOT_DIR / 'ungoogled-chromium' / 'domain_regex.list',
+                _ROOT_DIR / 'ungoogled-chromium' / 'domain_substitution.list',
+                source_tree,
+                None
+            )
 
     if not args.ci or not (source_tree / 'out/Default').exists():
         # Output args.gn
-        (source_tree / 'out/Default').mkdir(parents=True)
-        gn_flags = (_ROOT_DIR / 'ungoogled-chromium' / 'flags.gn').read_text(encoding=ENCODING)
-        gn_flags += '\n'
-        windows_flags = (_ROOT_DIR / 'flags.windows.gn').read_text(encoding=ENCODING)
-        if args.x86:
-            windows_flags = windows_flags.replace('x64', 'x86')
-        gn_flags += windows_flags
-        (source_tree / 'out/Default/args.gn').write_text(gn_flags, encoding=ENCODING)
+        with group('Output args.gn'):
+            (source_tree / 'out/Default').mkdir(parents=True)
+            gn_flags = (_ROOT_DIR / 'ungoogled-chromium' / 'flags.gn').read_text(encoding=ENCODING)
+            gn_flags += '\n'
+            windows_flags = (_ROOT_DIR / 'flags.windows.gn').read_text(encoding=ENCODING)
+            if args.x86:
+                windows_flags = windows_flags.replace('x64', 'x86')
+            gn_flags += windows_flags
+            (source_tree / 'out/Default/args.gn').write_text(gn_flags, encoding=ENCODING)
 
     # Enter source tree to run build commands
     os.chdir(source_tree)
 
     if not args.ci or not os.path.exists('out\\Default\\gn.exe'):
         # Run GN bootstrap
-        _run_build_process(
-            sys.executable, 'tools\\gn\\bootstrap\\bootstrap.py', '-o', 'out\\Default\\gn.exe',
-            '--skip-generate-buildfiles')
+        with group('Run gn bootstrap'):
+            _run_build_process(
+                sys.executable, 'tools\\gn\\bootstrap\\bootstrap.py', '-o', 'out\\Default\\gn.exe',
+                '--skip-generate-buildfiles')
 
         # Run gn gen
-        _run_build_process('out\\Default\\gn.exe', 'gen', 'out\\Default', '--fail-on-unused-args')
+        with group('Run gn gen'):
+            _run_build_process('out\\Default\\gn.exe', 'gen', 'out\\Default', '--fail-on-unused-args')
 
     # Run ninja
     if args.ci:
-        try:
-            _run_build_process_timeout('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',
-                                    'chromedriver', 'mini_installer', timeout=3.5*60*60)
-        except KeyboardInterrupt:
-            sys.exit(124)
-        except RuntimeError:
-            sys.exit(123)
+        with group('Run ninja'):
+            try:
+                _run_build_process_timeout('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',
+                                        'chromedriver', 'mini_installer', timeout=3.5*60*60)
+            except KeyboardInterrupt:
+                exit(124)
+            except RuntimeError:
+                exit(123)
+
         # package
-        os.chdir(_ROOT_DIR)
-        subprocess.run([sys.executable, 'package.py'])
+        with group('Package result'):
+            os.chdir(_ROOT_DIR)
+            subprocess.run([sys.executable, 'package.py'])
     else:
         _run_build_process('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',
                            'chromedriver', 'mini_installer')
