@@ -20,7 +20,7 @@ on:
         type: number
     outputs:
       finished:
-        value: ${{ inputs.finished || jobs.pt2.outputs.finished }}
+        value: ${{ inputs.finished || jobs.pt1.outputs.finished }}
 
 jobs:
   pt1:
@@ -31,26 +31,13 @@ jobs:
       - run: Get-PSDrive
 
       - name: Checkout repository
-        if: '!inputs.finished'
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Copy repository to expected location
-        if: '!inputs.finished'
-        run: |
-          Copy-Item -Path . -Destination "C:\ungoogled-chromium-windows" -Recurse
-          Set-Location -Path C:\ungoogled-chromium-windows
-          Get-ChildItem -Path $env:GITHUB_WORKSPACE -Include * -File -Recurse | foreach { Remove-Item $_ -ErrorAction SilentlyContinue }
-  pt2:
-    name: ${{ inputs.x86 && 'x86 build' || 'x64 build' }}, step ${{ inputs.num }}, build
-    if: '!inputs.finished'
-    runs-on: windows-latest
-    needs: pt1
-    defaults:
-      run:
-        working-directory: C:\ungoogled-chromium-windows
-    steps:
+      - name: Copy ungoogled-chromium stuff to C drive
+        run: Copy-Item -Path . -Destination "C:\ungoogled-chromium-windows" -Recurse
+
       - name: Install pnpm
         uses: pnpm/action-setup@v2
         with:
@@ -58,9 +45,7 @@ jobs:
           run_install: false
 
       - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+        run: echo "STORE_PATH=$(pnpm store path --silent)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Setup pnpm cache
         uses: actions/cache@v3
@@ -74,8 +59,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            ./build/download_cache
-            ./build/src/third_party
+            C:/ungoogled-chromium-windows/build/download_cache
+            C:/ungoogled-chromium-windows/build/src/third_party
           key: ${{ runner.os }}-${{ inputs.x86 && 'x86' || 'x64' }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
 
       - name: Setup PGO profile cache
@@ -85,7 +70,6 @@ jobs:
           key: ${{ runner.os }}-${{ inputs.x86 && 'x86' || 'x64' }}-pgo-${{ hashFiles('**.profdata') }}
 
       - name: Install node.js dependencies
-        if: '!inputs.finished'
         run: pnpm install
         working-directory: ./.github/actions/stage
 
@@ -96,5 +80,8 @@ jobs:
           finished: ${{ inputs.finished }}
           from_artifact: ${{ !inputs.first }}
           x86: ${{ inputs.x86 }}
+
+      - name: Copy PGO profile to workspace for caching
+        run: Copy-Item -Path C:/ungoogled-chromium-windows -Filter *.profdata -Destination $env:GITHUB_WORKSPACE -Recurse
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
