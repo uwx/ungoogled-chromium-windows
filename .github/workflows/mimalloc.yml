@@ -49,6 +49,17 @@ jobs:
       - name: Use NuGet
         uses: nuget/setup-nuget@v1
 
+      - name: Cache or Pop build data
+        uses: actions/cache@v3
+        with:
+          path: |
+            out
+            **/bin
+            **/obj
+          key: ${{ runner.os }}-build-${{ inputs.ref }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ inputs.ref }}-
+
       - name: Build mimalloc solution
         run: msbuild "ide/vs2022/mimalloc.sln" /p:configuration=${{ inputs.configuration }} /p:platform=${{ inputs.platform }}
 
