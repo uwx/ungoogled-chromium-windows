@@ -24,7 +24,7 @@ on:
 
 jobs:
   pt1:
-    name: ${{ inputs.x86 && 'x86 build' || 'x64 build' }}, step ${{ inputs.num }}
+    name: step ${{ inputs.num }}
     if: '!inputs.finished'
     runs-on: windows-latest
     steps:
