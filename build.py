@@ -8,6 +8,7 @@
 ungoogled-chromium build script for Microsoft Windows
 """
 
+from contextlib import contextmanager
 from typing import Any, Generator, TypedDict
 import github_action_utils as action
 
@@ -149,6 +150,7 @@ def main():
 
     args: Args = parser.parse_args()
 
+    @contextmanager
     def group(name: str) -> Generator[Any, None, None]:
         if args.ci:
             action.start_group(name)
