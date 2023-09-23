@@ -147,7 +147,7 @@ def main():
         winrar_path: str
         disable_ssl_verification: bool
 
-    args = Args(parser.parse_args())
+    args: Args = parser.parse_args()
 
     def group(name: str) -> Generator[Any, None, None]:
         if args.ci:
