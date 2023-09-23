@@ -1,4 +1,4 @@
-name: Step
+name: Build ungoogled-chromium single step
 
 on:
   workflow_call:
