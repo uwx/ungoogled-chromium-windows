@@ -226,6 +226,14 @@ def main():
             get_logger().error('File checksum does not match: %s', exc)
             exit(1)
 
+        # Unpack downloads
+        extractors = {
+            ExtractorEnum.SEVENZIP: args.sevenz_path,
+            ExtractorEnum.WINRAR: args.winrar_path,
+        }
+        get_logger().info('Unpacking downloads...')
+        downloads.unpack_downloads(download_info, downloads_cache, source_tree, extractors)
+
         get_logger().info('Retrieving PGO profiles...')
         # Retrieve PGO profiles manually (not with gclient)
         # https://chromium.googlesource.com/chromium/src/+/master/tools/update_pgo_profiles.py
@@ -244,14 +252,6 @@ def main():
                     dest.write(downloaded.content)
         else:
             os.utime(profile_path, None)
-
-        # Unpack downloads
-        extractors = {
-            ExtractorEnum.SEVENZIP: args.sevenz_path,
-            ExtractorEnum.WINRAR: args.winrar_path,
-        }
-        get_logger().info('Unpacking downloads...')
-        downloads.unpack_downloads(download_info, downloads_cache, source_tree, extractors)
 
         # Download esbuild
         # _download_esbuild(source_tree, downloads_cache, args.disable_ssl_verification, extractors)
