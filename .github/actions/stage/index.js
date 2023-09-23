@@ -45,7 +45,7 @@ async function run() {
         });
     }
 
-    const args = ['build.py', '--ci', ...(x86 ? ['--x86'] : [])];
+    const args = ['-u', 'build.py', '--ci', ...(x86 ? ['--x86'] : [])]; // -u: unbuffered output
 
     const retCode = await exec.exec('python', args, {
         cwd: basedir,
