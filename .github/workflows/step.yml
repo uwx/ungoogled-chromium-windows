@@ -20,13 +20,16 @@ on:
         type: number
     outputs:
       finished:
-        value: ${{ jobs.reusable_workflow_job.outputs.finished }}
+        value: ${{ inputs.finished || jobs.pt2.outputs.finished }}
 
 jobs:
-  reusable_workflow_job:
-    name: ${{ inputs.x86 && 'x86 build' || 'x64 build' }}, step ${{ inputs.num }}
-    runs-on: windows-2019
+  pt1:
+    name: ${{ inputs.x86 && 'x86 build' || 'x64 build' }}, step ${{ inputs.num }}, preparation
+    if: '!inputs.finished'
+    runs-on: windows-latest
     steps:
+      - run: Get-PSDrive
+
       - name: Checkout repository
         if: '!inputs.finished'
         uses: actions/checkout@v4
@@ -39,22 +42,27 @@ jobs:
           Copy-Item -Path . -Destination "C:\ungoogled-chromium-windows" -Recurse
           Set-Location -Path C:\ungoogled-chromium-windows
           Get-ChildItem -Path $env:GITHUB_WORKSPACE -Include * -File -Recurse | foreach { Remove-Item $_ -ErrorAction SilentlyContinue }
-
+  pt2:
+    name: ${{ inputs.x86 && 'x86 build' || 'x64 build' }}, step ${{ inputs.num }}, build
+    if: '!inputs.finished'
+    runs-on: windows-latest
+    needs: pt1
+    defaults:
+      run:
+        working-directory: C:\ungoogled-chromium-windows
+    steps:
       - name: Install pnpm
-        if: '!inputs.finished'
         uses: pnpm/action-setup@v2
         with:
           version: 8
           run_install: false
 
       - name: Get pnpm store directory
-        if: '!inputs.finished'
         shell: bash
         run: |
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
-        if: '!inputs.finished'
         uses: actions/cache@v3
         with:
           path: ${{ env.STORE_PATH }}
@@ -63,7 +71,6 @@ jobs:
             ${{ runner.os }}-${{ inputs.x86 && 'x86' || 'x64' }}-pnpm-store-
 
       - name: Setup third-party tool cache
-        if: '!inputs.finished'
         uses: actions/cache@v3
         with:
           path: |
@@ -72,7 +79,6 @@ jobs:
           key: ${{ runner.os }}-${{ inputs.x86 && 'x86' || 'x64' }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
 
       - name: Setup PGO profile cache
-        if: '!inputs.finished'
         uses: actions/cache@v3
         with:
           path: '**.profdata'
@@ -84,7 +90,6 @@ jobs:
         working-directory: ./.github/actions/stage
 
       - name: Run stage
-        if: '!inputs.finished'
         id: stage
         uses: ./.github/actions/stage
         with:
@@ -92,4 +97,4 @@ jobs:
           from_artifact: ${{ !inputs.first }}
           x86: ${{ inputs.x86 }}
     outputs:
-      finished: ${{ inputs.finished || steps.stage.outputs.finished }}
+      finished: ${{ steps.stage.outputs.finished }}
