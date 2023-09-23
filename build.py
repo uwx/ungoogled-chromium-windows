@@ -8,7 +8,7 @@
 ungoogled-chromium build script for Microsoft Windows
 """
 
-from typing import Any, Generator
+from typing import Any, Generator, TypedDict
 import github_action_utils as action
 
 import sys
@@ -61,14 +61,14 @@ def _get_vcvars_path(name='64'):
         raise RuntimeError(f'Could not find vcvars batch script in expected location: {vcvars_path}')
     return vcvars_path
 
-def _run_build_process(*args, **kwargs):
+def _run_build_process(*args: str, **kwargs):
     """
     Runs the subprocess with the correct environment variables for building
     """
     # Add call to set VC variables
     cmd_input = [f'call "{_get_vcvars_path()}" >nul']
     cmd_input.append('set DEPOT_TOOLS_WIN_TOOLCHAIN=0')
-    cmd_input.append(' '.join(map('"{}"'.format, args)))
+    cmd_input.append(' '.join(map(lambda x: f'"{x}"', args)))
     cmd_input.append('exit\n')
     subprocess.run(('cmd.exe', '/k'),
                    input='\n'.join(cmd_input),
@@ -76,14 +76,14 @@ def _run_build_process(*args, **kwargs):
                    encoding=ENCODING,
                    **kwargs)
 
-def _run_build_process_timeout(*args, timeout):
+def _run_build_process_timeout(*args: str, timeout: int):
     """
     Runs the subprocess with the correct environment variables for building
     """
     # Add call to set VC variables
     cmd_input = [f'call "{_get_vcvars_path()}" >nul']
     cmd_input.append('set DEPOT_TOOLS_WIN_TOOLCHAIN=0')
-    cmd_input.append(' '.join(map('"{}"'.format, args)))
+    cmd_input.append(' '.join(map(lambda x: f'"{x}"', args)))
     cmd_input.append('exit\n')
     with subprocess.Popen(('cmd.exe', '/k'), encoding=ENCODING, stdin=subprocess.PIPE, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP) as proc:
         proc.stdin.write('\n'.join(cmd_input))
@@ -139,13 +139,24 @@ def main():
         '--x86',
         action='store_true'
     )
-    args = parser.parse_args()
+
+    class Args(TypedDict):
+        ci: bool
+        x86: bool
+        sevenz_path: str
+        winrar_path: str
+        disable_ssl_verification: bool
+
+    args = Args(parser.parse_args())
 
     def group(name: str) -> Generator[Any, None, None]:
-        def i():
+        if args.ci:
+            action.start_group(name)
+        else:
             log.info(name)
-            yield
-        return action.group(name) if args.ci else i()
+        yield
+        if args.ci:
+            action.end_group(name)
 
     def error(message: str):
         if args.ci:
@@ -193,19 +204,16 @@ def main():
             pgo_target = 'win32' if args.x86 else 'win64' # https://github.com/chromium/chromium/blob/45530e7cae53c526cd29ad6f12ec26f6cc09c8bf/DEPS#L5551-L5572
             pgo_dir = source_tree / 'chrome' / 'build'
             state_file = pgo_dir / (f'{pgo_target}.pgo.txt')
-            profile_name = None
-            with open(state_file, 'r') as f:
-                profile_name = f.read().strip()
+            profile_name = state_file.read_text(encoding=ENCODING).strip()
 
             pgo_profile_dir = pgo_dir / 'pgo_profiles'
             profile_path = pgo_profile_dir / profile_name
-            if not os.path.isfile(profile_path):
+            if not profile_path.is_file():
                 with requests.get(f'https://commondatastorage.googleapis.com/chromium-optimization-profiles/pgo_profiles/{profile_name}') as downloaded:
-                    with open(profile_path, 'wb') as dest:
-                        dest.write(downloaded.content)
+                    profile_path.write_bytes(downloaded.content)
             else:
                 action.notice(f'Found existing PGO profile called {profile_name}')
-                os.utime(profile_path, None)
+                profile_path.touch()
 
         # Download esbuild
         # _download_esbuild(source_tree, downloads_cache, args.disable_ssl_verification, extractors)
