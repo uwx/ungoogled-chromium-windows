@@ -9,6 +9,7 @@ ungoogled-chromium build script for Microsoft Windows
 """
 
 from contextlib import contextmanager
+import logging
 from typing import Any, Generator, TypedDict
 import github_action_utils as action
 
@@ -94,7 +95,7 @@ def _run_build_process_timeout(*args: str, timeout: int):
             if proc.returncode != 0:
                 raise RuntimeError('Build failed!')
         except subprocess.TimeoutExpired:
-            print('Sending keyboard interrupt')
+            log.warn('Sending keyboard interrupt')
             for _ in range(3):
                 ctypes.windll.kernel32.GenerateConsoleCtrlEvent(1, proc.pid)
                 time.sleep(1)
@@ -165,6 +166,9 @@ def main():
             action.error(message, 'ungoogled-chromium build script')
         else:
             log.error(message)
+
+    if args.ci:
+        log.setLevel(logging.DEBUG)
 
     # Set common variables
     source_tree = _ROOT_DIR / 'build' / 'src'
