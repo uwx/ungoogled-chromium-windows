@@ -36,9 +36,9 @@ jobs:
       - name: Copy repository to expected location
         if: '!inputs.finished'
         run: |
-          Set-Location -Path C:\
-          Move-Item -Path $env:GITHUB_WORKSPACE -Destination "C:\ungoogled-chromium-windows"
+          Copy-Item -Path . -Destination "C:\ungoogled-chromium-windows" -Recurse
           Set-Location -Path C:\ungoogled-chromium-windows
+          Get-ChildItem -Path "C:\ungoogled-chromium-windows" -Include * -File -Recurse | foreach { $_.Delete()}
 
       - name: Install pnpm
         if: '!inputs.finished'
