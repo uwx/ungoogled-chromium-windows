@@ -113,6 +113,16 @@ jobs:
           path: ${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
           retention-days: 5
 
+      - name: Upload .patch rejects on build failure
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: patch-rejects
+          path: |
+            ${{ env.PROJECT_LOCATION }}\**\*.rej
+            **\*.rej
+          retention-days: 90
+
   build-chromium:
     strategy:
       matrix:
