@@ -13,18 +13,6 @@ index e931b3d1efda6..207b823396f48 100755
            '..',
        ],
        setenv=True)
-@@ -454,6 +458,11 @@ def BuildZStd():
-           '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64',
-           '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded',  # /MT to match LLVM.
-           '-DZSTD_BUILD_SHARED=OFF',
-+          '-DCMAKE_C_FLAGS_RELEASE=-O3 -DNDEBUG -w -march=x86-64-v3 -mprefer-avx128 -ffp-contract=fast -fmerge-all-constants -fipa-pta -fgraphite-identity -floop-nest-optimize -pipe -fdata-sections -ffunction-sections ',
-+          '-DCMAKE_CXX_FLAGS_RELEASE=-O3 -DNDEBUG -w -march=x86-64-v3 -mprefer-avx128 -ffp-contract=fast -fmerge-all-constants -fipa-pta -fgraphite-identity -floop-nest-optimize -pipe -fdata-sections -ffunction-sections ',
-+          '-DCMAKE_EXE_LINKER_FLAGS=-Wl,-O1 -Wl,--gc-sections -Wl,--as-needed -Wl,--push-state,C:/mimalloc.lib,--pop-state ',
-+          '-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-O1 -Wl,--gc-sections -Wl,--as-needed -Wl,--push-state,C:/mimalloc.lib,--pop-state ',
-+          '-DCMAKE_MODULE_LINKER_FLAGS=-Wl,-O1 -Wl,--gc-sections -Wl,--as-needed -Wl,--push-state,C:/mimalloc.lib,--pop-state ',
-           '../build/cmake',
-       ],
-       setenv=True)
 @@ -721,9 +730,11 @@ def main():
 
    global CLANG_REVISION, PACKAGE_VERSION, LLVM_BUILD_DIR
