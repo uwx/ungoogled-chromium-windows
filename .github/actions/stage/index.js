@@ -57,6 +57,9 @@ async function run() {
                 await new Promise(r => setTimeout(r, 10000));
             }
         }
+    } else if (retCode !== 124) {
+        core.setOutput('finished', false);
+        core.setFailed('Build script returned exit code: ' + retCode);
     } else {
         await new Promise(r => setTimeout(r, 5000));
         await exec.exec('7z', ['a', '-tzip', 'C:\\ungoogled-chromium-windows\\artifacts.zip',

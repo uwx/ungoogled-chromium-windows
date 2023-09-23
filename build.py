@@ -295,8 +295,13 @@ def main():
 
     # Run ninja
     if args.ci:
-        _run_build_process_timeout('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',
-                                   'chromedriver', 'mini_installer', timeout=3.5*60*60)
+        try:
+            _run_build_process_timeout('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',
+                                    'chromedriver', 'mini_installer', timeout=3.5*60*60)
+        except KeyboardInterrupt:
+            sys.exit(124)
+        except RuntimeError:
+            sys.exit(123)
         # package
         os.chdir(_ROOT_DIR)
         subprocess.run([sys.executable, 'package.py'])
