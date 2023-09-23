@@ -189,7 +189,12 @@ def main():
 
         # Retrieve downloads
         with group('Downloading required files...'):
-            downloads.retrieve_downloads(download_info, downloads_cache, True, args.disable_ssl_verification)
+            for attempt in range(1, 6):
+                try:
+                    downloads.retrieve_downloads(download_info, downloads_cache, True, args.disable_ssl_verification)
+                except subprocess.CalledProcessError as exc:
+                    log.warn(f'Download failed; attempt {attempt} of 5: {exc}')
+                    time.sleep(5)
             try:
                 downloads.check_downloads(download_info, downloads_cache)
             except downloads.HashMismatchError as exc:
