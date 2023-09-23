@@ -49,8 +49,8 @@ jobs:
       - name: Use NuGet
         uses: nuget/setup-nuget@v1
 
-      - name: Restore nuget packages for all solutions
-        run: msbuild "ide/vs2022/mimalloc.sln" /p:configuration=${{ inputs.configuration }} /p:platform=${{ inputs.platform }} /t:restore
+      - name: Build mimalloc solution
+        run: msbuild "ide/vs2022/mimalloc.sln" /p:configuration=${{ inputs.configuration }} /p:platform=${{ inputs.platform }}
 
       - name: Upload compiled results
         id: upload-artifact
