@@ -1,3 +1,5 @@
+name: Build default LLVM from llvm/llvm-project
+
 on:
   workflow_dispatch:
     inputs:
