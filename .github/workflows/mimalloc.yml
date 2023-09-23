@@ -41,7 +41,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: microsoft/mimalloc
-          path: _mimalloc
           ref: ${{ inputs.ref }}
 
       - name: Setup MSBuild
@@ -52,11 +51,10 @@ jobs:
 
       - name: Restore nuget packages for all solutions
         run: msbuild "ide/vs2022/mimalloc.sln" /p:configuration=${{ inputs.configuration }} /p:platform=${{ inputs.platform }} /t:restore
-        working-directory: ${{ github.workspace }}/_mimalloc
 
       - name: Upload compiled results
         id: upload-artifact
         uses: actions/upload-artifact@v3
         with:
           name: mimalloc-${{ inputs.platform }}-${{ inputs.configuration }}-${{ inputs.ref }}
-          path:  ${{ github.workspace }}/_mimalloc/out-${{ inputs.platform }}/${{ inputs.configuration }}/mimalloc-static.lib
+          path: out/msvc-${{ inputs.platform }}/${{ inputs.configuration }}/mimalloc-static.lib
