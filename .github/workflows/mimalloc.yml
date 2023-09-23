@@ -56,8 +56,9 @@ jobs:
             out
             **/bin
             **/obj
-          key: ${{ runner.os }}-build-${{ inputs.ref }}-${{ github.run_id }}
+          key: mimalloc-${{ runner.os }}-build-${{ inputs.ref }}-${{ github.run_id }}
           restore-keys: |
+            mimalloc-${{ runner.os }}-build-${{ inputs.ref }}-
             ${{ runner.os }}-build-${{ inputs.ref }}-
 
       - name: Build mimalloc solution
