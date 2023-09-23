@@ -81,7 +81,9 @@ jobs:
       - name: Setup PGO profile cache
         uses: actions/cache@v3
         with:
-          path: '**.profdata'
+          path: |
+            **.profdata
+            ${{ env.PROJECT_LOCATION }}\**.profdata
           key: ${{ env.CACHE_PREFIX }}-pgo-${{ hashFiles('**.profdata') }}
 
       - name: Setup ccache
@@ -100,6 +102,7 @@ jobs:
         working-directory: ${{ env.PROJECT_LOCATION }}
 
       - name: Copy PGO profile to workspace for caching
+        id: copy-pgo
         run: Copy-Item -Path $env:PROJECT_LOCATION -Filter *.profdata -Destination $env:GITHUB_WORKSPACE -Recurse
 
       - name: Build Chromium LLVM
@@ -122,6 +125,24 @@ jobs:
             ${{ env.PROJECT_LOCATION }}\**\*.rej
             **\*.rej
           retention-days: 90
+
+      - name: Fallback save downloads cache on build failure
+        if: failure()
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            ${{ env.PROJECT_LOCATION }}\build\download_cache
+            ${{ env.PROJECT_LOCATION }}\build\src\third_party
+          key: ${{ env.CACHE_PREFIX }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
+
+      - name: Fallback save PGO cache on build failure
+        if: failure() && steps.copy-pgo.outcome == 'success'
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            **.profdata
+            ${{ env.PROJECT_LOCATION }}\**.profdata
+          key: ${{ env.CACHE_PREFIX }}-pgo-${{ hashFiles('**.profdata') }}
 
   build-chromium:
     strategy:
