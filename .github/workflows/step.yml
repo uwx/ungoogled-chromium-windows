@@ -104,6 +104,7 @@ jobs:
           variant: sccache
 
       - name: Install node.js dependencies
+        id: pnpm-install
         run: pnpm install
         working-directory: ./.github/actions/stage
 
@@ -116,6 +117,25 @@ jobs:
           x86: ${{ inputs.x86 }}
 
       - name: Copy PGO profile to workspace for caching
+        id: copy-pgo
         run: Copy-Item -Path $env:PROJECT_LOCATION -Filter *.profdata -Destination $env:GITHUB_WORKSPACE -Recurse
+
+      - name: Fallback save PGO cache on build failure
+        if: failure() && steps.copy-pgo.outcome == 'success'
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            **.profdata
+            ${{ env.PROJECT_LOCATION }}\**.profdata
+          key: ${{ env.CACHE_PREFIX }}-pgo-${{ hashFiles('**.profdata') }}
+
+      - name: Fallback save pnpm cache on build failure
+        if: failure() && steps.pnpm-install.outcome == 'success'
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ env.CACHE_PREFIX }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ env.CACHE_PREFIX }}-pnpm-store-
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
