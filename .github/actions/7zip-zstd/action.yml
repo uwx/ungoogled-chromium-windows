@@ -12,8 +12,6 @@ runs:
       shell: bash
       working-directory: ${{ runner.temp }}
       run: |
-        echo $(Get-Command 7z)
-        echo $(Get-Command 7z.*)
         aria2c -x 16 "https://github.com/p7zip-project/p7zip/releases/download/v17.05/linux-cmake-p7zip.7z"
         7z x "linux-cmake-p7zip.7z" -op7zip
         sudo mv ./p7zip/* /opt/p7z
@@ -25,6 +23,8 @@ runs:
       shell: pwsh
       working-directory: ${{ runner.temp }}
       run: |
+        echo $(Get-Command 7z)
+        echo $(Get-Command 7z.*)
         aria2c -x 16 "https://github.com/mcmilk/7-Zip-zstd/releases/download/v${{ inputs.version }}/Codecs-x64.7z"
         7z x Codecs-x64.7z "-o$((Get-Item $((Get-Command 7z).Path)).Directory.FullName)\Codecs"
         rm Codecs-x64.7z
