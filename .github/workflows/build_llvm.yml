@@ -4,14 +4,47 @@ on:
   workflow_call:
     outputs:
       finished:
-        value: ${{ jobs.build-5.outputs.finished }}
+        value: ${{ jobs.build-0.outputs.early-exit || jobs.build-5.outputs.finished }}
+      has_stage_artifact:
+        value: ${{ jobs.build-1.result == 'success' }}
 
 jobs:
   build-mimalloc:
     uses: ./.github/workflows/mimalloc.yml
 
-  build-1: { name: 'step 1', needs: build-mimalloc, uses: './.github/workflows/step_llvm.yml', with: { num: 1, finished: false, first: true, mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
-  build-2: { name: 'step 2', needs: [build-mimalloc, build-1], uses: './.github/workflows/step_llvm.yml', with: { num: 2, finished: "${{ join(needs.build-1.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
-  build-3: { name: 'step 3', needs: [build-mimalloc, build-2], uses: './.github/workflows/step_llvm.yml', with: { num: 3, finished: "${{ join(needs.build-2.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
-  build-4: { name: 'step 4', needs: [build-mimalloc, build-3], uses: './.github/workflows/step_llvm.yml', with: { num: 4, finished: "${{ join(needs.build-3.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
-  build-5: { name: 'step 5', needs: [build-mimalloc, build-4], uses: './.github/workflows/step_llvm.yml', with: { num: 5, finished: "${{ join(needs.build-4.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+  build-0:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest]
+    env:
+      STORE_PATH: 'unset fixme'
+      CACHE_PREFIX: ${{ matrix.os }}
+      PROJECT_LOCATION: C:\ungoogled-chromium-windows
+    needs: build-mimalloc
+    steps:
+      - name: Look for existing LLVM
+        id: cache-check
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
+          key: local-llvm-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
+
+      - name: Upload early-exit compiled results as artifact
+        if: steps.cache-check.outputs.cache-hit
+        id: upload-artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: chromium-llvm
+          path: ${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
+          retention-days: 5
+
+    outputs:
+      early-exit: ${{ steps.cache-check.outputs.cache-hit }}
+
+  build-1: { if: '!needs.build-0.outputs.early-exit', name: 'step 1', needs: [build-mimalloc, build-0], uses: './.github/workflows/step_llvm.yml', with: { num: 1, finished: false, first: true, mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+  build-2: { if: '!needs.build-0.outputs.early-exit', name: 'step 2', needs: [build-mimalloc, build-0, build-1], uses: './.github/workflows/step_llvm.yml', with: { num: 2, finished: "${{ join(needs.build-1.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+  build-3: { if: '!needs.build-0.outputs.early-exit', name: 'step 3', needs: [build-mimalloc, build-0, build-2], uses: './.github/workflows/step_llvm.yml', with: { num: 3, finished: "${{ join(needs.build-2.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+  build-4: { if: '!needs.build-0.outputs.early-exit', name: 'step 4', needs: [build-mimalloc, build-0, build-3], uses: './.github/workflows/step_llvm.yml', with: { num: 4, finished: "${{ join(needs.build-3.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+  build-5: { if: '!needs.build-0.outputs.early-exit', name: 'step 5', needs: [build-mimalloc, build-0, build-4], uses: './.github/workflows/step_llvm.yml', with: { num: 5, finished: "${{ join(needs.build-4.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }

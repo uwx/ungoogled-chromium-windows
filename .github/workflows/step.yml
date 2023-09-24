@@ -83,6 +83,7 @@ jobs:
           path: |
             ${{ env.PROJECT_LOCATION }}\build\download_cache
             ${{ env.PROJECT_LOCATION }}\build\src\third_party
+            !${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
           key: ${{ env.CACHE_PREFIX }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
           restore-keys: |
             ${{ env.CACHE_PREFIX }}-downloads-partial-including-extracted-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}

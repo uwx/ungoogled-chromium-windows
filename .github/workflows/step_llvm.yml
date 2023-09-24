@@ -28,7 +28,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-2019]
+        os: [windows-latest]
     env:
       STORE_PATH: 'unset fixme'
       CACHE_PREFIX: ${{ matrix.os }}
@@ -80,12 +80,15 @@ jobs:
           path: |
             ${{ env.PROJECT_LOCATION }}\build\download_cache
             ${{ env.PROJECT_LOCATION }}\build\src\third_party
+            !${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
           key: ${{ env.CACHE_PREFIX }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
           restore-keys: |
+            ${{ env.CACHE_PREFIX }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
             ${{ env.CACHE_PREFIX }}-downloads-partial-including-extracted-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
             ${{ env.CACHE_PREFIX }}-downloads-partial-download-only-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
 
       - name: Setup PGO profile cache
+        if: '!steps.cache-check.outputs.cache-hit'
         uses: actions/cache@v3
         with:
           path: |
@@ -137,6 +140,14 @@ jobs:
           name: chromium-llvm
           path: ${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
           retention-days: 5
+
+      - name: Cache compiled LLVM
+        if: steps.build-llvm.outputs.finished
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            ${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
+          key: local-llvm-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
 
       - name: Upload .patch rejects on build failure
         if: failure()

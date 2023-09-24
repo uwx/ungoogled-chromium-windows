@@ -7,12 +7,16 @@ on:
         required: false
         default: false
         type: boolean
+      has_stage_artifact:
+        required: false
+        default: false
+        type: boolean
     outputs:
       finished:
         value: ${{ jobs.build-12.outputs.finished }}
 
 jobs:
-  build-1: { name: 'step 1', uses: './.github/workflows/step.yml', with: { num: 1, finished: false, first: true, x86: '${{ inputs.x86 }}' } }
+  build-1: { name: 'step 1', uses: './.github/workflows/step.yml', with: { num: 1, finished: false, first: '${{ inputs.has_stage_artifact }}', x86: '${{ inputs.x86 }}' } }
   build-2: { name: 'step 2', needs: build-1, uses: './.github/workflows/step.yml', with: { num: 2, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}' } }
   build-3: { name: 'step 3', needs: build-2, uses: './.github/workflows/step.yml', with: { num: 3, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}' } }
   build-4: { name: 'step 4', needs: build-3, uses: './.github/workflows/step.yml', with: { num: 4, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}' } }
