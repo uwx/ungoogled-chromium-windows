@@ -1,7 +1,7 @@
 import ctypes
 import subprocess
 import time
-from .build import _get_vcvars_path, ENCODING, log, set_ci_log, _run_build_process_timeout, _ROOT_DIR
+from build import _get_vcvars_path, ENCODING, log, set_ci_log, _run_build_process_timeout, _ROOT_DIR
 
 set_ci_log()
 
