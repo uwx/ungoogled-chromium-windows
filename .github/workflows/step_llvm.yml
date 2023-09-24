@@ -30,10 +30,12 @@ jobs:
       matrix:
         os: [windows-latest]
     env:
+      PGO_PROFILE_NAME: unset fixme
       SEVENZ_PATH: unset fixme
       STORE_PATH: unset fixme
       CACHE_PREFIX: ${{ matrix.os }}
       PROJECT_LOCATION: C:\ungoogled-chromium-windows
+      TIMEOUT_KEY: step-llvm
     steps:
       - name: Download static mimalloc
         uses: actions/download-artifact@v2
@@ -89,15 +91,11 @@ jobs:
             ${{ env.CACHE_PREFIX }}-downloads-partial-download-only-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
 
       - name: Setup PGO profile cache
-        if: '!steps.cache-check.outputs.cache-hit'
         uses: actions/cache@v3
         with:
           path: |
-            **.profdata
             ${{ env.PROJECT_LOCATION }}\**.profdata
-          key: ${{ env.CACHE_PREFIX }}-pgo-${{ hashFiles('**.profdata') }}
-          restore-keys: |
-            ${{ env.CACHE_PREFIX }}-pgo-
+          key: ${{ env.CACHE_PREFIX }}-pgo-
 
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
@@ -114,6 +112,48 @@ jobs:
       - name: Get 7zip path
         run: echo "SEVENZ_PATH=$((Get-Command 7z).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Setup environment
+        id: setup-environment
+        uses: ./.github/actions/stage
+        with:
+          tarball-artifact-name: build-artifact-x64
+          tarball-root: .\build
+          tarball-pattern: .\build\src
+          cwd: ${{ env.PROJECT_LOCATION }}
+          run: python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --step setup-environment
+          key: ${{ env.TIMEOUT_KEY }}
+
+      - name: Download PGO profiles
+        id: download-pgo
+        uses: ./.github/actions/stage
+        with:
+          tarball-artifact-name: build-artifact-x64
+          tarball-root: .\build
+          tarball-pattern: .\build\src
+          cwd: ${{ env.PROJECT_LOCATION }}
+          run: python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --step download-pgo-profiles
+          key: ${{ env.TIMEOUT_KEY }}
+
+      - name: Create ARGS.gn
+        uses: ./.github/actions/stage
+        with:
+          tarball-artifact-name: build-artifact-x64
+          tarball-root: .\build
+          tarball-pattern: .\build\src
+          cwd: ${{ env.PROJECT_LOCATION }}
+          run: python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --step create-args-gn
+          key: ${{ env.TIMEOUT_KEY }}
+
+      - name: Bootstrap GN
+        uses: ./.github/actions/stage
+        with:
+          tarball-artifact-name: build-artifact-x64
+          tarball-root: .\build
+          tarball-pattern: .\build\src
+          cwd: ${{ env.PROJECT_LOCATION }}
+          run: python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --step bootstrap-gn
+          key: ${{ env.TIMEOUT_KEY }}
+
       - name: Build Chromium LLVM
         id: build-llvm
         uses: ./.github/actions/stage
@@ -122,13 +162,9 @@ jobs:
           tarball-root: ${{ env.PROJECT_LOCATION }}\build
           tarball-pattern: ${{ env.PROJECT_LOCATION }}\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: |
-            python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --no-build
-            python -u build_llvm.py
-
-      - name: Copy PGO profile to workspace for caching
-        id: copy-pgo
-        run: Copy-Item -Path $env:PROJECT_LOCATION -Filter *.profdata -Destination $env:GITHUB_WORKSPACE -Recurse
+          run: python -u build_llvm.py
+          ignore-exit-codes: 124
+          key: ${{ env.TIMEOUT_KEY }}
 
       - name: Upload compiled results
         if: steps.build-llvm.outputs.finished
@@ -159,7 +195,7 @@ jobs:
 
       # Don't save LLVM data if LLVM build may have failed
       - name: Fallback save downloads cache on build failure (1)
-        if: failure() && (steps.build-llvm.outcome == 'success' || steps.build-llvm.outcome == 'skipped')
+        if: failure() && steps.setup-environment.outputs.outcome == 'success' && ((steps.build-llvm.outputs.outcome == 'success') || steps.build-llvm.outcome == 'skipped')
         uses: actions/cache/save@v3
         with:
           path: |
@@ -168,7 +204,7 @@ jobs:
           key: ${{ env.CACHE_PREFIX }}-downloads-partial-including-extracted-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
 
       - name: Fallback save downloads cache on build failure (2)
-        if: failure() && (steps.build-llvm.outcome == 'failure' || steps.build-llvm.outcome == 'cancelled')
+        if: failure() && steps.setup-environment.outputs.outcome == 'success' && ((steps.build-llvm.outputs.outcome == 'failed') || steps.build-llvm.outcome == 'cancelled')
         uses: actions/cache/save@v3
         with:
           path: |
@@ -176,13 +212,12 @@ jobs:
           key: ${{ env.CACHE_PREFIX }}-downloads-partial-download-only-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
 
       - name: Fallback save PGO cache on build failure
-        if: failure() && steps.copy-pgo.outcome == 'success'
+        if: failure() && env.CACHE_PREFIX != 'unset fixme'
         uses: actions/cache/save@v3
         with:
           path: |
-            **.profdata
             ${{ env.PROJECT_LOCATION }}\**.profdata
-          key: ${{ env.CACHE_PREFIX }}-pgo-${{ hashFiles('**.profdata') }}
+          key: ${{ env.CACHE_PREFIX }}-pgo-${{ env.CACHE_PREFIX }}
 
       - name: Fallback save pnpm cache on build failure
         if: failure() && steps.pnpm-install.outcome == 'success'
@@ -191,4 +226,4 @@ jobs:
           path: ${{ env.STORE_PATH }}
           key: ${{ env.CACHE_PREFIX }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
     outputs:
-      finished: ${{ steps.build-llvm.outputs.finished }}
+      finished: ${{ steps.build-llvm.outputs.outcome == 'success' }}

@@ -36,6 +36,7 @@ jobs:
       CACHE_PREFIX: ${{ matrix.os }}
       PROJECT_LOCATION: C:\ungoogled-chromium-windows
       ARCH_STRING: ${{ inputs.x86 && 'x86' || 'x64' }}
+      TIMEOUT_KEY: step
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -92,10 +93,9 @@ jobs:
       - name: Setup PGO profile cache
         uses: actions/cache@v3
         with:
-          path: '**.profdata'
-          key: ${{ env.CACHE_PREFIX }}-pgo-${{ hashFiles('**.profdata') }}
-          restore-keys: |
-            ${{ env.CACHE_PREFIX }}-pgo-
+          path: |
+            ${{ env.PROJECT_LOCATION }}\**.profdata
+          key: ${{ env.CACHE_PREFIX }}-pgo-
 
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
@@ -112,7 +112,48 @@ jobs:
       - name: Get 7zip path
         run: echo "SEVENZ_PATH=$((Get-Command 7z).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Run stage
+      - name: Setup environment
+        id: setup-environment
+        uses: ./.github/actions/stage
+        with:
+          tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
+          tarball-root: .\build
+          tarball-pattern: .\build\src
+          cwd: ${{ env.PROJECT_LOCATION }}
+          run: python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --step setup-environment
+          key: ${{ env.TIMEOUT_KEY }}
+
+      - name: Download PGO profiles
+        uses: ./.github/actions/stage
+        with:
+          tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
+          tarball-root: .\build
+          tarball-pattern: .\build\src
+          cwd: ${{ env.PROJECT_LOCATION }}
+          run: python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --step download-pgo-profiles
+          key: ${{ env.TIMEOUT_KEY }}
+
+      - name: Create ARGS.gn
+        uses: ./.github/actions/stage
+        with:
+          tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
+          tarball-root: .\build
+          tarball-pattern: .\build\src
+          cwd: ${{ env.PROJECT_LOCATION }}
+          run: python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --step create-args-gn
+          key: ${{ env.TIMEOUT_KEY }}
+
+      - name: Bootstrap GN
+        uses: ./.github/actions/stage
+        with:
+          tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
+          tarball-root: .\build
+          tarball-pattern: .\build\src
+          cwd: ${{ env.PROJECT_LOCATION }}
+          run: python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --step bootstrap-gn
+          key: ${{ env.TIMEOUT_KEY }}
+
+      - name: Build
         id: stage
         uses: ./.github/actions/stage
         with:
@@ -120,8 +161,13 @@ jobs:
           tarball-root: ${{ env.PROJECT_LOCATION }}\build
           tarball-pattern: ${{ env.PROJECT_LOCATION }}\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: |
-            python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}"
+          run: python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --step build
+          ignore-exit-codes: 124
+
+      - name: Package build result
+        if: steps.stage.outputs.outcome == 'success'
+        run: python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --step package
+        working-directory: ${{ env.PROJECT_LOCATION }}
 
       - name: Upload build result
         if: steps.stage.outputs.outcome == 'success'
@@ -130,18 +176,13 @@ jobs:
           x86: ${{ inputs.x86 }}
           project-location: ${{ env.PROJECT_LOCATION }}
 
-      - name: Copy PGO profile to workspace for caching
-        id: copy-pgo
-        run: Copy-Item -Path $env:PROJECT_LOCATION -Filter *.profdata -Destination $env:GITHUB_WORKSPACE -Recurse
-
       - name: Fallback save PGO cache on build failure
-        if: failure() && steps.copy-pgo.outcome == 'success'
+        if: failure() && env.CACHE_PREFIX != 'unset fixme'
         uses: actions/cache/save@v3
         with:
           path: |
-            **.profdata
             ${{ env.PROJECT_LOCATION }}\**.profdata
-          key: ${{ env.CACHE_PREFIX }}-pgo-${{ hashFiles('**.profdata') }}
+          key: ${{ env.CACHE_PREFIX }}-pgo-${{ env.CACHE_PREFIX }}
 
       - name: Fallback save pnpm cache on build failure
         if: failure() && steps.pnpm-install.outcome == 'success'
@@ -150,4 +191,4 @@ jobs:
           path: ${{ env.STORE_PATH }}
           key: ${{ env.CACHE_PREFIX }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
     outputs:
-      finished: ${{ steps.stage.outputs.finished }}
+      finished: ${{ steps.stage.outputs.outcome == 'success' }}

@@ -250,7 +250,7 @@ def main(args: Args):
             )
             if unremovable_files:
                 log.error('Files could not be pruned: %s', unremovable_files)
-                sys.exit(1)
+                exit(1)
 
         # Apply patches
         with group('Apply patches'):
@@ -284,6 +284,8 @@ def main(args: Args):
             pgo_dir = source_tree / 'chrome' / 'build'
             state_file = pgo_dir / (f'{pgo_target}.pgo.txt')
             profile_name = state_file.read_text(encoding=ENCODING).strip()
+            if args.ci:
+                action.set_env('PGO_PROFILE_NAME', profile_name)
 
             pgo_profile_dir = pgo_dir / 'pgo_profiles'
             profile_path = pgo_profile_dir / profile_name
@@ -325,8 +327,8 @@ def main(args: Args):
         if args.step == Step.BUILD:
             with group('Run ninja'):
                 try:
-                    _run_build_process_timeout('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',
-                                            'chromedriver', 'mini_installer', timeout=int(3.5*60*60))
+                    _run_build_process('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',
+                                       'chromedriver', 'mini_installer')
                 except KeyboardInterrupt:
                     exit(124)
                 except RuntimeError:

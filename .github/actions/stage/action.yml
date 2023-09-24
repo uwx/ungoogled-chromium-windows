@@ -15,9 +15,15 @@ inputs:
   tarball-pattern:
     description: Patterns (separated by newline) of files to add to the progress tarball. By default stores everything under 'tarball-root'
     required: false
+  before-run:
+    description: Non-timeout newline-separated commands to execute before 'run'. The execution duration of these commands will reduce the length of 'timeout'
+    required: false
   run:
     description: Newline-separated commands to execute with a timeout
     required: true
+  after-run:
+    description: Non-timeout newline-separated commands to execute after 'run'
+    required: false
   cwd:
     description: Working directory to run commands under
     required: false
@@ -30,8 +36,8 @@ inputs:
   input-encoding:
     description: Encoding for STDIN, defaults to UTF-8
     required: true
-  ignore-return-codes:
-    description: Comma-separated list of numeric return codes to treat as timeouts if returned from spawned processes
+  ignore-exit-codes:
+    description: Comma-separated list of numeric exit codes to treat as timeouts if returned from spawned processes
     required: false
   fail-on-stderr:
     description: Whether to fail if output to stderr. Defaults to false
@@ -49,11 +55,19 @@ inputs:
     description: "The shell to run the command as; one of 'none', 'cmd', 'pwsh', 'python', 'node'. If 'none', runs each line raw as a separate command"
     required: false
     default: none
+  key:
+    description: Used for splitting timed actions across multiple steps, while inheriting the same timeout. All stage actions with the same key within a job \
+      will timeout when the timeout for the first action with a key is reached.
+    required: false
 outputs:
   results-per-command:
     description: JSON-stringified array of exit codes ordered per command (each line in 'run'), or a 'timeout' instead of an entry if execution timed out.
   outcome:
     description: "One of: 'failed', 'timeout', 'success'"
+  before-run-outcome:
+    description: "One of: 'failed', 'timeout', 'success', 'skipped'"
+  after-run-outcome:
+    description: "One of: 'failed', 'timeout', 'success', 'skipped'"
 runs:
   using: node16
   main: index.js
