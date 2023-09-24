@@ -112,6 +112,9 @@ jobs:
       - name: Get 7zip path
         run: echo "SEVENZ_PATH=$((Get-Command 7z).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Install 7zip-zstd codecs
+        uses: ./.github/actions/7zip-zstd
+
       - name: Setup environment
         id: setup-environment
         uses: ./.github/actions/stage

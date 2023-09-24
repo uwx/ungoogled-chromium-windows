@@ -67,23 +67,10 @@ function getWorkingDirectory() {
  * @returns {Promise<void>}
  */
 exports.extractTar = async function extractTar(archivePath, compressionMethod, destination) {
-    // Create directory to extract tar into
-    const workingDirectory = destination || getWorkingDirectory();
-    await io.mkdirP(workingDirectory);
-    // --d: Decompress.
-    // --long=#: Enables long distance matching with # bits. Maximum is 30 (1GB) on 32-bit OS and 31 (2GB) on 64-bit.
-    const args = [
-        ...(compressionMethod == 'zstd'
-            ? ["--use-compress-program", "zstd -d --long=31"]
-            : ["-z"]),
-        "-xf",
-        archivePath.replace(new RegExp("\\" + path.sep, "g"), "/"),
-        "-P",
-        "-C",
-        workingDirectory.replace(new RegExp("\\" + path.sep, "g"), "/")
-    ];
-    await execTar(args);
+    await exec('7z', ['x', '-y', archivePath], { cwd: destination})
 }
+
+const pathSepRegex = new RegExp("\\" + path.sep, "g");
 
 /**
  * @param {string} tarFileName
@@ -102,23 +89,6 @@ exports.createTar = async function createTar(tarFileName, archiveFolder, sourceD
     // -T#: Compress using # working thread. If # is 0, attempt to detect and use the number of physical CPU cores.
     // --long=#: Enables long distance matching with # bits. Maximum is 30 (1GB) on 32-bit OS and 31 (2GB) on 64-bit.
     // Using 30 here because we also support 32-bit self-hosted runners.
-    const workingDirectory = getWorkingDirectory();
-    const args = [
-        '--posix',
-        ...(compressionMethod == 'zstd'
-            ? ["--use-compress-program", "zstd -T0 --long=31"]
-            : ["-z"]),
-        "-cf",
-        tarFileName.replace(new RegExp("\\" + path.sep, "g"), "/"),
-        '--exclude',
-        tarFileName.replace(new RegExp("\\" + path.sep, "g"), "/"),
-        "-P",
-        "-C",
-        workingDirectory.replace(new RegExp("\\" + path.sep, "g"), "/"),
-        '--verbatim-files-from',
-        "--files-from",
-        manifestFilename
-    ];
-    await execTar(args, archiveFolder);
+    await exec('7z', ['a', tarFileName, '-m0=zstd', '-mx2', '@' + manifestFilename, '-x!' + tarFileName, '-x!' + manifestFilename], { cwd: archiveFolder });
     await fs.promises.unlink(path.join(archiveFolder, manifestFilename));
 }

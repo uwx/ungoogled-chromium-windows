@@ -7,7 +7,7 @@ inputs:
     required: false
   tarball-file-name:
     description: File name (on disk) of the artifact used to store stage progress
-    default: artifacts.tar.zstd
+    default: artifacts.7z
     required: false
   tarball-root:
     description: Base directory which the stage progress tarball's file paths are relative to
