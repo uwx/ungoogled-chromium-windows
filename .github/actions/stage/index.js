@@ -189,7 +189,7 @@ async function run() {
     let failCase;
 
     const startTime = key && process.env['STAGE_START_' + key] ? Number(process.env['STAGE_START_' + key]) : Date.now();
-    const isExecutionTimedOut = () => timeout && startTime + timeout > Date.now();
+    const isExecutionTimedOut = () => timeout && startTime + timeout < Date.now();
 
     if (key && !process.env['STAGE_START_' + key]) {
         process.env['STAGE_START_' + key] = ''+startTime;
