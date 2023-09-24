@@ -35,48 +35,54 @@ class ToolRunnerWithTimeout extends ToolRunner {
     async execWithTimeout() {
         const [proc, promise] = await super.exec();
 
-        return new Promise((resolve, reject) => {
-            if (this.timeout !== undefined) {
-                Promise.race([promise, delay(this.timeout)])
-                    .then(async result => {
-                        if (result !== delayedSymbol) { // did not time out
-                            resolve([false, proc.exitCode || NaN]);
-                            return;
-                        }
-
-                        if (proc.exitCode === null && proc.pid !== undefined) { // if process is still running
-                            for (let i = 0; i < 3; i++) { // attempt to send ctrl+break
-                                if (proc.exitCode !== null) {
-                                    resolve([true, proc.exitCode]);
-                                    return;
-                                }
-                                await generateCtrlBreakAsync(proc.pid);
-                                await delay(1000);
-                            }
-
-                            if (proc.exitCode !== null) {
-                                resolve([true, proc.exitCode]);
-                                return;
-                            }
-
-                            await Promise.race([promise, delay(10_000)]);
-                            if (proc.exitCode === null) { // if process is still running AGAIN
-                                proc.kill(); // kill it with fire
-                            }
-
-                            resolve([true, proc.exitCode || NaN]);
-                            return;
-                        }
-
-                        resolve([false, proc.exitCode || NaN]);
-                        return;
-                    })
-                    .catch(reject);
-            } else {
-                promise.then(code => resolve([false, code])).catch(reject);
+        if (this.timeout !== undefined) {
+            const { timedOut, result } = await awaitWithTimeout(promise, this.timeout)
+            if (!timedOut) { // did not time out
+                return [false, await result];
             }
-        });
+
+            if (proc.exitCode === null && proc.pid !== undefined) { // if process is still running
+                for (let i = 0; i < 3; i++) { // attempt to send ctrl+break
+                    if (proc.exitCode !== null) {
+                        return [true, proc.exitCode];
+                    }
+                    await generateCtrlBreakAsync(proc.pid);
+                    await delay(1000);
+                }
+
+                if (proc.exitCode !== null) {
+                    return [true, proc.exitCode];
+                }
+
+                await awaitWithTimeout(promise, 10_000);
+                if (proc.exitCode === null) { // if process is still running AGAIN
+                    proc.kill(); // kill it with fire
+                }
+
+                return [true, proc.exitCode || NaN];
+            }
+
+            return [false, proc.exitCode || NaN];
+        } else {
+            return [false, await promise];
+        }
     }
+}
+
+/**
+ * @template T
+ * @param {Promise<T>} promise
+ * @param {number} ms
+ * @returns {Promise<{ timedOut: boolean, result: T | Promise<T> }>}
+ */
+async function awaitWithTimeout(promise, ms) {
+    const delay = delayCancelable(this.timeout);
+    const result = await Promise.race([promise, delay]);
+    if (result !== delayedSymbol) {
+        delay.cancel();
+        return { timedOut: false, result };
+    }
+    return { timedOut: true, result: promise };
 }
 
 /**
@@ -106,6 +112,20 @@ const { extractTar, createTar } = require('./tar');
  */
 function delay(ms) {
     return new Promise(r => setTimeout(() => r(delayedSymbol), ms));
+}
+
+/**
+ * @param {number} ms
+ * @returns {Promise<typeof delayedSymbol> & { cancel: () => void }}
+ */
+function delayCancelable(ms) {
+    /** @type {(result: typeof delayedSymbol) => void} */
+    let r;
+    const promise = new Promise(r1 => r = r1);
+    const timeout = setTimeout(() => r(delayedSymbol), ms);
+    return Object.assign(promise, {
+        cancel: () => clearTimeout(timeout)
+    });
 }
 
 /**
