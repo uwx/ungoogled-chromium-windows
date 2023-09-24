@@ -115,6 +115,7 @@ exports.createTar = async function createTar(tarFileName, archiveFolder, sourceD
         "-P",
         "-C",
         workingDirectory.replace(new RegExp("\\" + path.sep, "g"), "/"),
+        '--verbatim-files-from',
         "--files-from",
         manifestFilename
     ];
