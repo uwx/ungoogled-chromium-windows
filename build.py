@@ -296,50 +296,52 @@ def main():
             action.notice(f'Found existing PGO profile called {profile_name}')
             profile_path.touch()
 
-    if (not args.ci or not (source_tree / 'out/Default').exists()) and not args.no_build:
-        # Output args.gn
-        with group('Output args.gn'):
-            (source_tree / 'out/Default').mkdir(parents=True)
-            gn_flags = (_ROOT_DIR / 'ungoogled-chromium' / 'flags.gn').read_text(encoding=ENCODING)
-            gn_flags += '\n'
-            windows_flags = (_ROOT_DIR / 'flags.windows.gn').read_text(encoding=ENCODING)
-            if args.x86:
-                windows_flags = windows_flags.replace('x64', 'x86')
-            gn_flags += windows_flags
-            (source_tree / 'out/Default/args.gn').write_text(gn_flags, encoding=ENCODING)
+    if not args.no_build:
+        if not args.ci or not (source_tree / 'out/Default').exists():
+            # Output args.gn
+            with group('Output args.gn'):
+                (source_tree / 'out/Default').mkdir(parents=True)
+                gn_flags = (_ROOT_DIR / 'ungoogled-chromium' / 'flags.gn').read_text(encoding=ENCODING)
+                gn_flags += '\n'
+                windows_flags = (_ROOT_DIR / 'flags.windows.gn').read_text(encoding=ENCODING)
+                if args.x86:
+                    windows_flags = windows_flags.replace('x64', 'x86')
+                gn_flags += windows_flags
+                (source_tree / 'out/Default/args.gn').write_text(gn_flags, encoding=ENCODING)
 
     # Enter source tree to run build commands
     os.chdir(source_tree)
 
-    if (not args.ci or not os.path.exists('out\\Default\\gn.exe')) and not args.no_build:
-        # Run GN bootstrap
-        with group('Run gn bootstrap'):
-            _run_build_process(
-                sys.executable, 'tools\\gn\\bootstrap\\bootstrap.py', '-o', 'out\\Default\\gn.exe',
-                '--skip-generate-buildfiles')
+    if not args.no_build:
+        if not args.ci or not os.path.exists('out\\Default\\gn.exe'):
+            # Run GN bootstrap
+            with group('Run gn bootstrap'):
+                _run_build_process(
+                    sys.executable, 'tools\\gn\\bootstrap\\bootstrap.py', '-o', 'out\\Default\\gn.exe',
+                    '--skip-generate-buildfiles')
 
-        # Run gn gen
-        with group('Run gn gen'):
-            _run_build_process('out\\Default\\gn.exe', 'gen', 'out\\Default', '--fail-on-unused-args')
+            # Run gn gen
+            with group('Run gn gen'):
+                _run_build_process('out\\Default\\gn.exe', 'gen', 'out\\Default', '--fail-on-unused-args')
 
-    # Run ninja
-    if args.ci and not args.no_build:
-        with group('Run ninja'):
-            try:
-                _run_build_process_timeout('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',
-                                        'chromedriver', 'mini_installer', timeout=3.5*60*60)
-            except KeyboardInterrupt:
-                exit(124)
-            except RuntimeError:
-                exit(123)
+        # Run ninja
+        if args.ci:
+            with group('Run ninja'):
+                try:
+                    _run_build_process_timeout('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',
+                                            'chromedriver', 'mini_installer', timeout=3.5*60*60)
+                except KeyboardInterrupt:
+                    exit(124)
+                except RuntimeError:
+                    exit(123)
 
-        # package
-        with group('Package result'):
-            os.chdir(_ROOT_DIR)
-            subprocess.run([sys.executable, 'package.py'])
-    else:
-        _run_build_process('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',
-                           'chromedriver', 'mini_installer')
+            # package
+            with group('Package result'):
+                os.chdir(_ROOT_DIR)
+                subprocess.run([sys.executable, 'package.py'])
+        else:
+            _run_build_process('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',
+                            'chromedriver', 'mini_installer')
 
 
 if __name__ == '__main__':
