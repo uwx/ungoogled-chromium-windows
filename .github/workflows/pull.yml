@@ -33,3 +33,6 @@ jobs:
         uses: peter-evans/repository-dispatch@v2.1.2
         with:
           event-type: updated-from-upstream
+      - name: Keepalive Workflow
+        if: always()
+        uses: gautamkrishnar/keepalive-workflow@1.1.0
