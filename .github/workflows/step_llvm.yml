@@ -111,20 +111,6 @@ jobs:
         run: pnpm install
         working-directory: ./.github/actions
 
-      - name: Run stage with --no-build flag to download tools and apply patches
-        id: prebuild
-        uses: ./.github/actions/stage
-        with:
-          finished: ${{ inputs.finished }}
-          from_artifact: ${{ !inputs.first }}
-          save_artifact: false
-          x86: false
-          no_build: true
-
-      - name: Copy PGO profile to workspace for caching
-        id: copy-pgo
-        run: Copy-Item -Path $env:PROJECT_LOCATION -Filter *.profdata -Destination $env:GITHUB_WORKSPACE -Recurse
-
       - name: Get 7zip path
         run: echo "SEVENZ_PATH=$((Get-Command 7z).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -139,6 +125,10 @@ jobs:
           run: |
             python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --no-build
             python -u build_llvm.py
+
+      - name: Copy PGO profile to workspace for caching
+        id: copy-pgo
+        run: Copy-Item -Path $env:PROJECT_LOCATION -Filter *.profdata -Destination $env:GITHUB_WORKSPACE -Recurse
 
       - name: Upload compiled results
         if: steps.build-llvm.outputs.finished
