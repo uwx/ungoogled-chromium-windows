@@ -37,32 +37,42 @@ on:
 jobs:
   build_mimalloc:
     runs-on: windows-2022
+    env:
+      MIMALLOC_SHA: fixme pls
     steps:
       - uses: actions/checkout@v4
         with:
           repository: microsoft/mimalloc
           ref: ${{ inputs.ref }}
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v1.1
-
-      - name: Use NuGet
-        uses: nuget/setup-nuget@v1
+      - name: Get checked out commit SHA
+        run: echo "MIMALLOC_SHA=$(git rev-parse HEAD)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Cache or Pop build data
+        id: cache-check
         uses: actions/cache@v3
         with:
           path: |
             out
             **/bin
             **/obj
-          key: mimalloc-${{ runner.os }}-build-${{ inputs.ref }}-${{ github.run_id }}
+          key: mimalloc-${{ runner.os }}-build-${{ inputs.ref }}-${{ env.MIMALLOC_SHA }}
           restore-keys: |
             mimalloc-${{ runner.os }}-build-${{ inputs.ref }}-
             ${{ runner.os }}-build-${{ inputs.ref }}-
 
+      # Skip actual build if not necessary
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.1
+        if: '!steps.cache-check.outputs.cache-hit'
+
+      - name: Use NuGet
+        uses: nuget/setup-nuget@v1
+        if: '!steps.cache-check.outputs.cache-hit'
+
       - name: Build mimalloc solution
         run: msbuild "ide/vs2022/mimalloc.sln" /p:configuration=${{ inputs.configuration }} /p:platform=${{ inputs.platform }}
+        if: '!steps.cache-check.outputs.cache-hit'
 
       - name: Upload compiled results
         id: upload-artifact
