@@ -1,0 +1,17 @@
+name: Build ungoogled-chromium
+
+on:
+  workflow_call:
+    outputs:
+      finished:
+        value: ${{ jobs.build-5.outputs.finished }}
+
+jobs:
+  build-mimalloc:
+    uses: ./.github/workflows/mimalloc.yml
+
+  build-1: { name: 'step 1', needs: build-mimalloc, uses: './.github/workflows/step_llvm.yml', with: { num: 1, finished: false, first: true, mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+  build-2: { name: 'step 2', needs: [build-mimalloc, build-1], uses: './.github/workflows/step_llvm.yml', with: { num: 2, finished: "${{ join(needs.build-1.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+  build-3: { name: 'step 3', needs: [build-mimalloc, build-2], uses: './.github/workflows/step_llvm.yml', with: { num: 3, finished: "${{ join(needs.build-2.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+  build-4: { name: 'step 4', needs: [build-mimalloc, build-3], uses: './.github/workflows/step_llvm.yml', with: { num: 4, finished: "${{ join(needs.build-3.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+  build-5: { name: 'step 5', needs: [build-mimalloc, build-4], uses: './.github/workflows/step_llvm.yml', with: { num: 5, finished: "${{ join(needs.build-4.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }

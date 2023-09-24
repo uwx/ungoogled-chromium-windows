@@ -10,7 +10,15 @@ inputs:
   x86:
     description: Build x86 binary
     required: false
-    default: false
+    default: 'false'
+  override_command:
+    description: 'Override build.py call'
+    required: false
+    default: ''
+  no_build:
+    description: 'Pass --no-build flag to build.py'
+    required: false
+    default: 'false'
 outputs:
   finished:
     description: If a previous stage already finished the build, the stage will set all output variables to the input ones and exit

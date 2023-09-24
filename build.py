@@ -78,7 +78,7 @@ def _run_build_process(*args: str, **kwargs):
                    encoding=ENCODING,
                    **kwargs)
 
-def _run_build_process_timeout(*args: str, timeout: int):
+def _run_build_process_timeout(*args: str, timeout: int, cwd: os.PathLike = None):
     """
     Runs the subprocess with the correct environment variables for building
     """
@@ -87,7 +87,7 @@ def _run_build_process_timeout(*args: str, timeout: int):
     cmd_input.append('set DEPOT_TOOLS_WIN_TOOLCHAIN=0')
     cmd_input.append(' '.join(map(lambda x: f'"{x}"', args)))
     cmd_input.append('exit\n')
-    with subprocess.Popen(('cmd.exe', '/k'), encoding=ENCODING, stdin=subprocess.PIPE, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP) as proc:
+    with subprocess.Popen(('cmd.exe', '/k'), encoding=ENCODING, stdin=subprocess.PIPE, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP, cwd=cwd) as proc:
         proc.stdin.write('\n'.join(cmd_input))
         proc.stdin.close()
         try:
@@ -113,6 +113,32 @@ def _make_tmp_paths():
     tmp_path = Path(os.environ['TEMP'])
     if not tmp_path.exists():
         tmp_path.mkdir()
+
+def set_ci_log():
+    log.setLevel(logging.NOTSET)
+    for x in log.handlers:
+        x.setLevel(logging.NOTSET)
+    # https://stackoverflow.com/a/56944256
+    class CustomFormatter(logging.Formatter):
+        grey = "\x1b[38;20m"
+        yellow = "\x1b[33;20m"
+        red = "\x1b[31;20m"
+        bold_red = "\x1b[31;1m"
+        reset = "\x1b[0m"
+        format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+
+        FORMATS = {
+            logging.DEBUG: logging.Formatter(grey + format + reset),
+            logging.INFO: logging.Formatter(grey + format + reset),
+            logging.WARNING: logging.Formatter(yellow + format + reset),
+            logging.ERROR: logging.Formatter(red + format + reset),
+            logging.CRITICAL: logging.Formatter(bold_red + format + reset),
+        }
+
+        def format(self, record):
+            formatter = self.FORMATS.get(record.levelno)
+            return formatter.format(record)
+    log.handlers[0].setFormatter(CustomFormatter())
 
 def main():
     """CLI Entrypoint"""
@@ -174,30 +200,7 @@ def main():
             log.error(message, stacklevel=2)
 
     if args.ci:
-        log.setLevel(logging.NOTSET)
-        for x in log.handlers:
-            x.setLevel(logging.NOTSET)
-        # https://stackoverflow.com/a/56944256
-        class CustomFormatter(logging.Formatter):
-            grey = "\x1b[38;20m"
-            yellow = "\x1b[33;20m"
-            red = "\x1b[31;20m"
-            bold_red = "\x1b[31;1m"
-            reset = "\x1b[0m"
-            format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
-
-            FORMATS = {
-                logging.DEBUG: logging.Formatter(grey + format + reset),
-                logging.INFO: logging.Formatter(grey + format + reset),
-                logging.WARNING: logging.Formatter(yellow + format + reset),
-                logging.ERROR: logging.Formatter(red + format + reset),
-                logging.CRITICAL: logging.Formatter(bold_red + format + reset),
-            }
-
-            def format(self, record):
-                formatter = self.FORMATS.get(record.levelno)
-                return formatter.format(record)
-        log.handlers[0].setFormatter(CustomFormatter())
+        set_ci_log()
 
 
     # Set common variables
@@ -239,23 +242,6 @@ def main():
             }
             downloads.unpack_downloads(download_info, downloads_cache, source_tree, extractors)
 
-        with group('Retrieving PGO profiles...'):
-            # Retrieve PGO profiles manually (not with gclient)
-            # https://chromium.googlesource.com/chromium/src/+/master/tools/update_pgo_profiles.py
-            pgo_target = 'win32' if args.x86 else 'win64' # https://github.com/chromium/chromium/blob/45530e7cae53c526cd29ad6f12ec26f6cc09c8bf/DEPS#L5551-L5572
-            pgo_dir = source_tree / 'chrome' / 'build'
-            state_file = pgo_dir / (f'{pgo_target}.pgo.txt')
-            profile_name = state_file.read_text(encoding=ENCODING).strip()
-
-            pgo_profile_dir = pgo_dir / 'pgo_profiles'
-            profile_path = pgo_profile_dir / profile_name
-            if not profile_path.is_file():
-                with requests.get(f'https://commondatastorage.googleapis.com/chromium-optimization-profiles/pgo_profiles/{profile_name}') as downloaded:
-                    profile_path.write_bytes(downloaded.content)
-            else:
-                action.notice(f'Found existing PGO profile called {profile_name}')
-                profile_path.touch()
-
         # Download esbuild
         # _download_esbuild(source_tree, downloads_cache, args.disable_ssl_verification, extractors)
 
@@ -292,6 +278,23 @@ def main():
                 source_tree,
                 None
             )
+
+    with group('Retrieving PGO profiles...'):
+        # Retrieve PGO profiles manually (not with gclient)
+        # https://chromium.googlesource.com/chromium/src/+/master/tools/update_pgo_profiles.py
+        pgo_target = 'win32' if args.x86 else 'win64' # https://github.com/chromium/chromium/blob/45530e7cae53c526cd29ad6f12ec26f6cc09c8bf/DEPS#L5551-L5572
+        pgo_dir = source_tree / 'chrome' / 'build'
+        state_file = pgo_dir / (f'{pgo_target}.pgo.txt')
+        profile_name = state_file.read_text(encoding=ENCODING).strip()
+
+        pgo_profile_dir = pgo_dir / 'pgo_profiles'
+        profile_path = pgo_profile_dir / profile_name
+        if not profile_path.is_file():
+            with requests.get(f'https://commondatastorage.googleapis.com/chromium-optimization-profiles/pgo_profiles/{profile_name}') as downloaded:
+                profile_path.write_bytes(downloaded.content)
+        else:
+            action.notice(f'Found existing PGO profile called {profile_name}')
+            profile_path.touch()
 
     if (not args.ci or not (source_tree / 'out/Default').exists()) and not args.no_build:
         # Output args.gn

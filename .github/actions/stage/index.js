@@ -27,6 +27,8 @@ async function run() {
     const finished = core.getBooleanInput('finished', {required: true});
     const from_artifact = core.getBooleanInput('from_artifact', {required: true});
     const x86 = core.getBooleanInput('x86', {required: false});
+    const override_command = core.getInput('override_command', {required: false});
+    const no_build = core.getBooleanInput('no_build', {required: false});
 
     console.log(`finished: ${finished}, artifact: ${from_artifact}`);
     if (finished) {
@@ -45,7 +47,10 @@ async function run() {
         });
     }
 
-    const args = ['-u', 'build.py', '--ci', '--7z-path', await io.which('7z', true), ...(x86 ? ['--x86'] : [])]; // -u: unbuffered output
+    const args = override_command
+        ? ['-u', ...override_command.split(' ')]
+        : ['-u', 'build.py', '--ci', '--7z-path', await io.which('7z', true), ...(x86 ? ['--x86'] : []), ...(no_build ? ['--no-build'] : [])];
+    // -u: unbuffered output
 
     const retCode = await exec.exec('python', args, {
         cwd: basedir,
