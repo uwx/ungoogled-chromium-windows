@@ -107,11 +107,7 @@ jobs:
         run: pnpm install
         working-directory: ./.github/actions/stage
 
-      - name: Run build.py to download tools and apply patches
-        run: python -u build.py --ci --no-build
-        working-directory: ${{ env.PROJECT_LOCATION }}
-
-      - name: Run stage with --no-build flag to prepare build
+      - name: Run stage with --no-build flag to download tools and apply patches
         id: prebuild
         uses: ./.github/actions/stage
         with:
