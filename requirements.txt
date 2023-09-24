@@ -1,2 +1,3 @@
 requests
 github-action-utils
+typed-argparse
