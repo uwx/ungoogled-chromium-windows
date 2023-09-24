@@ -8,10 +8,8 @@ set_ci_log()
 try:
     _run_build_process_timeout('python', 'tools/clang/scripts/build.py', '--bootstrap', '--without-android', '--without-fuchsia', '--disable-asserts', '--thinlto', '--pgo', '--bolt', '--llvm-force-head-revision',
          timeout=3.5*60*60,
-         cwd=(_ROOT_DIR / 'ungoogled-chromium'))
+         cwd=(_ROOT_DIR / 'build' / 'src'))
 except KeyboardInterrupt:
     exit(124)
 except RuntimeError:
     exit(123)
-
-_run_build_process_timeout
