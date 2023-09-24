@@ -26,3 +26,6 @@ runs:
         aria2c -x 16 "https://github.com/mcmilk/7-Zip-zstd/releases/download/v${{ inputs.version }}/Codecs-x64.7z"
         7z x Codecs-x64.7z "-o$((Get-Item $((Get-Command 7z).Path)).Directory.FullName)\Codecs"
         rm Codecs-x64.7z
+
+    - shell: pwsh
+      run: 7z i
