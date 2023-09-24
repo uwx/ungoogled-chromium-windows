@@ -21,16 +21,19 @@ async function run() {
     // Where the repository is cloned to
     const basedir = process.env.PROJECT_LOCATION || 'C:\\ungoogled-chromium-windows';
 
-    process.on('SIGINT', function() {
+    const tarballFileName = 'artifacts.tar.zstd';
+
+    process.on('SIGINT', function () {
     });
 
-    const finished = core.getBooleanInput('finished', {required: true});
-    const from_artifact = core.getBooleanInput('from_artifact', {required: true});
-    const x86 = core.getBooleanInput('x86', {required: false});
-    const override_command = core.getInput('override_command', {required: false});
-    const no_build = core.getBooleanInput('no_build', {required: false});
+    const finished = core.getBooleanInput('finished', { required: true });
+    const fromArtifact = core.getBooleanInput('from_artifact', { required: true });
+    const x86 = core.getBooleanInput('x86', { required: false });
+    const overrideCommand = core.getInput('override_command', { required: false });
+    const no_build = core.getBooleanInput('no_build', { required: false });
+    const saveArtifact = core.getBooleanInput('save_artifact', { required: false });
 
-    console.log(`finished: ${finished}, artifact: ${from_artifact}`);
+    console.log(`finished: ${finished}, artifact: ${fromArtifact}`);
     if (finished) {
         core.setOutput('finished', true);
         return;
@@ -39,16 +42,16 @@ async function run() {
     const artifactClient = artifact.create();
     const artifactName = x86 ? 'build-artifact-x86' : 'build-artifact';
 
-    if (from_artifact) {
+    if (fromArtifact) {
         await core.group('Downloading and extracting artifact', async () => {
             await artifactClient.downloadArtifact(artifactName, path.join(basedir, 'build'));
-            extractTar(path.join(basedir, 'build', 'artifacts.tar.zstd'), 'zstd', path.join(basedir, 'build'));
-            await io.rmRF(path.join(basedir, 'build', 'artifacts.tar.zstd'));
+            extractTar(path.join(basedir, 'build', tarballFileName), 'zstd', path.join(basedir, 'build'));
+            await io.rmRF(path.join(basedir, 'build', tarballFileName));
         });
     }
 
-    const args = override_command
-        ? ['-u', ...override_command.split(' ')]
+    const args = overrideCommand
+        ? ['-u', ...overrideCommand.split(' ')]
         : ['-u', 'build.py', '--ci', '--7z-path', await io.which('7z', true), ...(x86 ? ['--x86'] : []), ...(no_build ? ['--no-build'] : [])];
     // -u: unbuffered output
 
@@ -58,51 +61,40 @@ async function run() {
     });
     if (retCode === 0) {
         core.setOutput('finished', true);
-        const globber = await glob.create(path.join(basedir, 'build', 'ungoogled-chromium*'), {matchDirectories: false});
+        const globber = await glob.create(path.join(basedir, 'build', 'ungoogled-chromium*'), { matchDirectories: false });
 
-        await core.group('Uploading Chromium package', async () => {
-            /** @type {string[]} */
-            let packageList = [];
-            for await (const x of globber.globGenerator()) {
-                const newPath = x.slice(0, -4) + (x86 ? '_x86' : '_x64') + x.slice(-4);
-                await io.mv(x, newPath);
-                packageList.push(newPath);
-            }
-
-            const maxRetries = 5;
-            for (let i = 0; i < maxRetries; ++i) {
-                try {
-                    await artifactClient.uploadArtifact(x86 ? 'chromium-x86' : 'chromium', packageList, path.join(basedir, 'build'), {retentionDays: 3});
-                    break;
-                } catch (e) {
-                    console.error(`Upload artifact failed: ${e}. Attempt ${i + 1} of ${maxRetries}`);
-                    // Wait 10 seconds between the attempts
-                    await delay(10000);
+        if (!no_build) {
+            await core.group('Uploading Chromium package', async () => {
+                /** @type {string[]} */
+                let packageList = [];
+                for await (const x of globber.globGenerator()) {
+                    const newPath = x.slice(0, -4) + (x86 ? '_x86' : '_x64') + x.slice(-4);
+                    await io.mv(x, newPath);
+                    packageList.push(newPath);
                 }
-            }
-        });
+
+                await repeatOnFail('Upload artifact', async () => {
+                    await artifactClient.uploadArtifact(x86 ? 'chromium-x86' : 'chromium', packageList, path.join(basedir, 'build'), { retentionDays: 3 });
+                });
+            });
+        }
     } else if (retCode !== 124) {
         core.setOutput('finished', false);
         core.setFailed('Build script returned exit code: ' + retCode);
     } else {
         await core.group('Pausing and saving build artifacts for next step', async () => {
             await delay(5000);
-            const globbed = await glob.create(path.join(basedir, 'build', 'src'), { matchDirectories: false }).then(e => e.glob());
 
-            await core.group('Tarballing build files', async () => {
-                await createTar(path.join(basedir, 'artifacts.tar.zstd'), basedir, globbed, 'zstd');
-            });
+            if (saveArtifact) {
+                const globbed = await glob.create(path.join(basedir, 'build', 'src'), { matchDirectories: false }).then(e => e.glob());
 
-            const maxRetries = 5;
-            for (let i = 0; i < maxRetries; ++i) {
-                try {
-                    await artifactClient.uploadArtifact(artifactName, [path.join(basedir, 'artifacts.tar.zstd')], basedir, {retentionDays: 3});
-                    break;
-                } catch (e) {
-                    console.error(`Upload artifact failed: ${e}. Attempt ${i + 1} of ${maxRetries}`);
-                    // Wait 10 seconds between the attempts
-                    await delay(10000);
-                }
+                await core.group('Tarballing build files', async () => {
+                    await createTar(path.join(basedir, tarballFileName), basedir, globbed, 'zstd');
+                });
+
+                await repeatOnFail('Upload artifact', async () => {
+                    await artifactClient.uploadArtifact(artifactName, [path.join(basedir, tarballFileName)], basedir, { retentionDays: 3 });
+                });
             }
             core.setOutput('finished', false);
         });
@@ -110,3 +102,20 @@ async function run() {
 }
 
 run().catch(err => core.setFailed(err.message));
+
+/**
+ * @param {string} label
+ * @param {() => any} action
+ */
+async function repeatOnFail(label, action, maxRetries = 5) {
+    for (let i = 0; i < maxRetries; ++i) {
+        try {
+            await action();
+            break;
+        } catch (e) {
+            console.error(`${label} failed: ${e}. Attempt ${i + 1} of ${maxRetries}`);
+            // Wait 10 seconds between the attempts
+            await delay(10000);
+        }
+    }
+}

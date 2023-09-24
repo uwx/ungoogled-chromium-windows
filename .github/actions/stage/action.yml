@@ -12,13 +12,17 @@ inputs:
     required: false
     default: 'false'
   override_command:
-    description: 'Override build.py call'
+    description: Override build.py call
     required: false
     default: ''
   no_build:
-    description: 'Pass --no-build flag to build.py'
+    description: Pass --no-build flag to build.py
     required: false
     default: 'false'
+  save_artifact:
+    description:
+    required: false
+    default: 'true'
 outputs:
   finished:
     description: If a previous stage already finished the build, the stage will set all output variables to the input ones and exit

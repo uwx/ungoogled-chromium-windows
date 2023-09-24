@@ -116,6 +116,7 @@ jobs:
         with:
           finished: ${{ inputs.finished }}
           from_artifact: ${{ !inputs.first }}
+          save_artifact: false
           x86: false
           no_build: true
 
@@ -128,7 +129,7 @@ jobs:
         uses: ./.github/actions/stage
         with:
           finished: ${{ inputs.finished }}
-          from_artifact: true
+          from_artifact: ${{ !inputs.first }}
           x86: false
           override_command: build_llvm.py
 
