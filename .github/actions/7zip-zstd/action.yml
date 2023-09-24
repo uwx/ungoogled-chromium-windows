@@ -9,9 +9,19 @@ runs:
   using: composite
   steps:
     - if: runner.os != 'Windows'
+      shell: bash
+      working-directory: ${{ runner.temp }}
+      run: |
+        aria2c -x 16 "https://github.com/p7zip-project/p7zip/releases/download/v17.05/linux-cmake-p7zip.7z"
+        7z x "linux-cmake-p7zip.7z" -op7zip
+        sudo mv ./p7zip/* /opt/p7z
+        sudo mv /opt/p7z/7z_ /opt/p7z/7z
+        rm -r p7zip linux-cmake-p7zip.7z
+        echo "/opt/p7z" >> $GITHUB_PATH
+
+    - if: runner.os == 'Windows'
       shell: pwsh
-      run: exit 1
-    - shell: pwsh
+      working-directory: ${{ runner.temp }}
       run: |
         aria2c -x 16 "https://github.com/mcmilk/7-Zip-zstd/releases/download/v${{ inputs.version }}/Codecs-x64.7z"
         7z x Codecs-x64.7z "-o$((Get-Item $((Get-Command 7z).Path)).Directory.FullName)\Codecs"
