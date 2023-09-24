@@ -83,7 +83,9 @@ jobs:
           # enough cache space for all the tests to run at once and still
           # fit under the 10 GB limit.
           max-size: 500M
-          key: sccache-${{ matrix.os }}
+          key: sccache-llvm-old-${{ matrix.os }}
+          restore-keys: |
+            sccache-${{ matrix.os }}
           variant: sccache
 
       - name: Download source code
