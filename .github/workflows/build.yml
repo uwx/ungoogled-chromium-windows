@@ -11,9 +11,6 @@ on:
         required: false
         default: false
         type: boolean
-    outputs:
-      finished:
-        value: ${{ jobs.build-12.outputs.finished }}
 
 jobs:
   build-1: { name: 'step 1', uses: './.github/workflows/step.yml', with: { num: 1, finished: false, first: '${{ inputs.has_stage_artifact }}', x86: '${{ inputs.x86 }}' } }

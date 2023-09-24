@@ -4,8 +4,6 @@ name: Build Chromium LLVM
 on:
   workflow_call:
     outputs:
-      finished:
-        value: ${{ jobs.check-existing-llvm.outputs.early-exit || jobs.build-5.outputs.finished }}
       has_stage_artifact:
         description: Set to 'true' if LLVM was built from source and not loaded from cache, so .github/actions/stage has emitted an artifact to be reused
         value: ${{ jobs.build-1.result == 'success' }}
