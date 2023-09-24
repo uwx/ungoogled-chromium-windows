@@ -31,12 +31,12 @@ jobs:
       matrix:
         os: [windows-latest]
     env:
-      STORE_PATH: 'unset fixme'
+      SEVENZ_PATH: unset fixme
+      STORE_PATH: unset fixme
       CACHE_PREFIX: ${{ matrix.os }}
       PROJECT_LOCATION: C:\ungoogled-chromium-windows
+      ARCH_STRING: ${{ inputs.x86 && 'x86' || 'x64' }}
     steps:
-      - run: Get-PSDrive
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -55,7 +55,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-          cache: 'pip'
+          cache: pip
 
       - name: Install python dependencies
         run: pip install -r requirements.txt
@@ -101,21 +101,34 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           max-size: 5G
-          key: sccache-chromium-${{ env.CACHE_PREFIX }}-${{ inputs.x86 && 'x86' || 'x64' }}
+          key: sccache-chromium-${{ env.CACHE_PREFIX }}-${{ env.ARCH_STRING }}
           variant: sccache
 
       - name: Install node.js dependencies
         id: pnpm-install
         run: pnpm install
-        working-directory: ./.github/actions/stage
+        working-directory: ./.github/actions
+
+      - name: Get 7zip path
+        run: echo "SEVENZ_PATH=$((Get-Command 7z).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Run stage
         id: stage
         uses: ./.github/actions/stage
         with:
-          finished: ${{ inputs.finished }}
-          from_artifact: ${{ !inputs.first }}
+          tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
+          tarball-root: ${{ env.PROJECT_LOCATION }}\build
+          tarball-pattern: ${{ env.PROJECT_LOCATION }}\build\src
+          cwd: ${{ env.PROJECT_LOCATION }}
+          run: |
+            python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}"
+
+      - name: Upload build result
+        if: steps.stage.outputs.outcome == 'success'
+        uses: ./.github/actions/upload-chromium-package
+        with:
           x86: ${{ inputs.x86 }}
+          project-location: ${{ env.PROJECT_LOCATION }}
 
       - name: Copy PGO profile to workspace for caching
         id: copy-pgo

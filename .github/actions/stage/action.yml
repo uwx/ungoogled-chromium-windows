@@ -1,31 +1,59 @@
 name: 'Stage'
 description: 'Stage build'
 inputs:
-  finished:
-    description: If a previous stage already finished the build, the stage will set all output variables to the input ones and exit
+  tarball-artifact-name:
+    description: Name of the artifact used to store stage progress
+    default: build-artifact
+    required: false
+  tarball-file-name:
+    description: File name (on disk) of the artifact used to store stage progress
+    default: artifacts.tar.zstd
+    required: false
+  tarball-root:
+    description: Base directory which the stage progress tarball's file paths are relative to
     required: true
-  from_artifact:
-    description: If a previous stage already uploaded build artifacts, the stage will resume building
+  tarball-pattern:
+    description: Patterns (separated by newline) of files to add to the progress tarball. By default stores everything under 'tarball-root'
+    required: false
+  run:
+    description: Newline-separated commands to execute with a timeout
     required: true
-  x86:
-    description: Build x86 binary
+  cwd:
+    description: Working directory to run commands under
+    required: false
+  timeout:
+    description: The timeout for all commands to finish executing, in milliseconds. Default to 3 hours and 30 minutes.
+    required: false
+  inputs:
+    description: String to pass to STDIN of commands
+    required: false
+  input-encoding:
+    description: Encoding for STDIN, defaults to UTF-8
+    required: true
+  ignore-return-codes:
+    description: Comma-separated list of numeric return codes to treat as timeouts if returned from spawned processes
+    required: false
+  fail-on-stderr:
+    description: Whether to fail if output to stderr. Defaults to false
     required: false
     default: 'false'
-  override_command:
-    description: Override build.py call
-    required: false
-    default: ''
-  no_build:
-    description: Pass --no-build flag to build.py
-    required: false
-    default: 'false'
-  save_artifact:
-    description:
+  load-tarball-artifact-if-exists:
+    description: Whether to load the progress tarball if found one with 'tarball-artifact-name' in the current workflow
     required: false
     default: 'true'
+  save-tarball-artifact:
+    description: Whether to save the progress tarball if commands do not finish execution before the timeout is reached
+    required: false
+    default: 'true'
+  shell:
+    description: "The shell to run the command as; one of 'none', 'cmd', 'pwsh', 'python', 'node'. If 'none', runs each line raw as a separate command"
+    required: false
+    default: none
 outputs:
-  finished:
-    description: If a previous stage already finished the build, the stage will set all output variables to the input ones and exit
+  results-per-command:
+    description: JSON-stringified array of exit codes ordered per command (each line in 'run'), or a 'timeout' instead of an entry if execution timed out.
+  outcome:
+    description: "One of: 'failed', 'timeout', 'success'"
 runs:
-  using: 'node16'
-  main: 'index.js'
+  using: node16
+  main: index.js

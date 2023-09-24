@@ -4,5 +4,8 @@
     },
     "python.analysis.extraPaths": [
         "./ungoogled-chromium/utils"
-    ]
+    ],
+    "python.analysis.typeCheckingMode": "basic",
+    "python.linting.mypyEnabled": true,
+    "python.linting.enabled": false
 }

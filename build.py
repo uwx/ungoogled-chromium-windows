@@ -8,9 +8,13 @@
 ungoogled-chromium build script for Microsoft Windows
 """
 
+import typed_argparse as tap
 from contextlib import contextmanager
+from enum import Enum, IntEnum
 import logging
-from typing import Any, Generator, TypedDict
+from types import SimpleNamespace
+from typing import Any, Callable, Generator, Sequence, TypedDict, Union
+import typing
 import github_action_utils as action
 
 import sys
@@ -78,7 +82,7 @@ def _run_build_process(*args: str, **kwargs):
                    encoding=ENCODING,
                    **kwargs)
 
-def _run_build_process_timeout(*args: str, timeout: int, cwd: os.PathLike = None):
+def _run_build_process_timeout(*args: str, timeout: int, cwd: Union[os.PathLike, None] = None):
     """
     Runs the subprocess with the correct environment variables for building
     """
@@ -88,8 +92,10 @@ def _run_build_process_timeout(*args: str, timeout: int, cwd: os.PathLike = None
     cmd_input.append(' '.join(map(lambda x: f'"{x}"', args)))
     cmd_input.append('exit\n')
     with subprocess.Popen(('cmd.exe', '/k'), encoding=ENCODING, stdin=subprocess.PIPE, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP, cwd=cwd) as proc:
-        proc.stdin.write('\n'.join(cmd_input))
-        proc.stdin.close()
+        if proc.stdin:
+            proc.stdin.write('\n'.join(cmd_input))
+            proc.stdin.close()
+
         try:
             proc.wait(timeout)
             if proc.returncode != 0:
@@ -118,6 +124,7 @@ def set_ci_log():
     log.setLevel(logging.NOTSET)
     for x in log.handlers:
         x.setLevel(logging.NOTSET)
+
     # https://stackoverflow.com/a/56944256
     class CustomFormatter(logging.Formatter):
         grey = "\x1b[38;20m"
@@ -125,64 +132,56 @@ def set_ci_log():
         red = "\x1b[31;20m"
         bold_red = "\x1b[31;1m"
         reset = "\x1b[0m"
-        format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+        format_str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
 
         FORMATS = {
-            logging.DEBUG: logging.Formatter(grey + format + reset),
-            logging.INFO: logging.Formatter(grey + format + reset),
-            logging.WARNING: logging.Formatter(yellow + format + reset),
-            logging.ERROR: logging.Formatter(red + format + reset),
-            logging.CRITICAL: logging.Formatter(bold_red + format + reset),
+            logging.DEBUG: logging.Formatter(grey + format_str + reset),
+            logging.INFO: logging.Formatter(grey + format_str + reset),
+            logging.WARNING: logging.Formatter(yellow + format_str + reset),
+            logging.ERROR: logging.Formatter(red + format_str + reset),
+            logging.CRITICAL: logging.Formatter(bold_red + format_str + reset),
         }
 
         def format(self, record):
-            formatter = self.FORMATS.get(record.levelno)
+            formatter = self.FORMATS.get(record.levelno) or logging.Formatter(self.format_str)
             return formatter.format(record)
     log.handlers[0].setFormatter(CustomFormatter())
 
-def main():
-    """CLI Entrypoint"""
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        '--disable-ssl-verification',
-        action='store_true',
-        help='Disables SSL verification for downloading')
-    parser.add_argument(
-        '--7z-path',
-        dest='sevenz_path',
-        default=USE_REGISTRY,
-        help=('Command or path to 7-Zip\'s "7z" binary. If "_use_registry" is '
-              'specified, determine the path from the registry. Default: %(default)s'))
-    parser.add_argument(
-        '--winrar-path',
-        dest='winrar_path',
-        default=USE_REGISTRY,
-        help=('Command or path to WinRAR\'s "winrar.exe" binary. If "_use_registry" is '
-              'specified, determine the path from the registry. Default: %(default)s'))
-    parser.add_argument(
-        '--ci',
-        action='store_true'
-    )
-    parser.add_argument(
-        '--x86',
-        action='store_true'
-    )
-    parser.add_argument(
-        '--no-build',
-        dest='no_build',
-        action='store_true'
-    )
 
-    class Args(TypedDict):
-        ci: bool
-        x86: bool
-        sevenz_path: str
-        winrar_path: str
-        disable_ssl_verification: bool
-        no_build: bool
+class Step(Enum):
+    SETUP_ENVIRONMENT = 'setup-environment'
+    DOWNLOAD_PGO_PROFILES = 'download-pgo-profiles'
+    CREATE_ARGS_GN = 'create-args-gn'
+    BOOTSTRAP_GN = 'bootstrap-gn'
+    BUILD = 'build'
+    PACKAGE = 'package'
 
-    args: Args = parser.parse_args()
+    def __str__(self) -> str:
+        return str(self.value)
 
+class Args(tap.TypedArgs):
+    ci: bool = tap.arg(help="Set when running through CI", default=False)
+    x86: bool = tap.arg(help="Set for 32-bit builds", default=False)
+    sevenz_path: str = tap.arg('--7z-path', help=('Command or path to 7-Zip\'s "7z" binary. If "_use_registry" is '
+              'specified, determine the path from the registry. Default: %(default)s'), default=USE_REGISTRY)
+    winrar_path: str = tap.arg(help=('Command or path to WinRAR\'s "winrar.exe" binary. If "_use_registry" is '
+              'specified, determine the path from the registry. Default: %(default)s'), default=USE_REGISTRY)
+    disable_ssl_verification: bool = tap.arg(help='Disables SSL verification for downloading', default=False)
+    step: Step = tap.arg(help='Build step (when building in CI)', default=Step.SETUP_ENVIRONMENT)
+    force: bool = tap.arg(default=False)
+
+def retry_on_fail(msg: str, err: type[BaseException], callback: Callable[[], None]):
+    for attempt in range(1, 6):
+        try:
+            callback()
+        except err as exc:
+            log.warn(f'{msg} failed; attempt {attempt} of 5: {exc}')
+            time.sleep(5)
+        else:
+            return True
+    return False
+
+def main(args: Args):
     @contextmanager
     def group(name: str) -> Generator[Any, None, None]:
         if args.ci:
@@ -191,7 +190,7 @@ def main():
             log.info(name, stacklevel=2)
         yield
         if args.ci:
-            action.end_group(name)
+            action.end_group()
 
     def error(message: str):
         if args.ci:
@@ -208,7 +207,7 @@ def main():
     downloads_cache = _ROOT_DIR / 'build' / 'download_cache'
     # domsubcache = _ROOT_DIR / 'build' / 'domsubcache.tar.gz'
 
-    if not args.ci or not (source_tree / 'BUILD.gn').exists():
+    if not args.ci or (args.step == Step.SETUP_ENVIRONMENT and (not (source_tree / 'BUILD.gn').exists() or args.force)):
         # Setup environment
         source_tree.mkdir(parents=True, exist_ok=True)
         downloads_cache.mkdir(parents=True, exist_ok=True)
@@ -222,12 +221,13 @@ def main():
 
         # Retrieve downloads
         with group('Downloading required files...'):
-            for attempt in range(1, 6):
-                try:
-                    downloads.retrieve_downloads(download_info, downloads_cache, True, args.disable_ssl_verification)
-                except subprocess.CalledProcessError as exc:
-                    log.warn(f'Download failed; attempt {attempt} of 5: {exc}')
-                    time.sleep(5)
+            if not retry_on_fail(
+                'Download',
+                subprocess.CalledProcessError,
+                lambda: downloads.retrieve_downloads(download_info, downloads_cache, True, args.disable_ssl_verification)
+            ):
+                error('All download retry attempts exceeded, exiting')
+                exit(1)
             try:
                 downloads.check_downloads(download_info, downloads_cache)
             except downloads.HashMismatchError as exc:
@@ -242,9 +242,6 @@ def main():
             }
             downloads.unpack_downloads(download_info, downloads_cache, source_tree, extractors)
 
-        # Download esbuild
-        # _download_esbuild(source_tree, downloads_cache, args.disable_ssl_verification, extractors)
-
         # Prune binaries
         with group('Prune binaries'):
             unremovable_files = prune_binaries.prune_files(
@@ -253,7 +250,7 @@ def main():
             )
             if unremovable_files:
                 log.error('Files could not be pruned: %s', unremovable_files)
-                parser.exit(1)
+                sys.exit(1)
 
         # Apply patches
         with group('Apply patches'):
@@ -279,70 +276,71 @@ def main():
                 None
             )
 
-    with group('Retrieving PGO profiles...'):
-        # Retrieve PGO profiles manually (not with gclient)
-        # https://chromium.googlesource.com/chromium/src/+/master/tools/update_pgo_profiles.py
-        pgo_target = 'win32' if args.x86 else 'win64' # https://github.com/chromium/chromium/blob/45530e7cae53c526cd29ad6f12ec26f6cc09c8bf/DEPS#L5551-L5572
-        pgo_dir = source_tree / 'chrome' / 'build'
-        state_file = pgo_dir / (f'{pgo_target}.pgo.txt')
-        profile_name = state_file.read_text(encoding=ENCODING).strip()
+    if not args.ci or args.step == Step.DOWNLOAD_PGO_PROFILES:
+        with group('Retrieving PGO profiles...'):
+            # Retrieve PGO profiles manually (not with gclient)
+            # https://chromium.googlesource.com/chromium/src/+/master/tools/update_pgo_profiles.py
+            pgo_target = 'win32' if args.x86 else 'win64' # https://github.com/chromium/chromium/blob/45530e7cae53c526cd29ad6f12ec26f6cc09c8bf/DEPS#L5551-L5572
+            pgo_dir = source_tree / 'chrome' / 'build'
+            state_file = pgo_dir / (f'{pgo_target}.pgo.txt')
+            profile_name = state_file.read_text(encoding=ENCODING).strip()
 
-        pgo_profile_dir = pgo_dir / 'pgo_profiles'
-        profile_path = pgo_profile_dir / profile_name
-        if not profile_path.is_file():
-            with requests.get(f'https://commondatastorage.googleapis.com/chromium-optimization-profiles/pgo_profiles/{profile_name}') as downloaded:
-                profile_path.write_bytes(downloaded.content)
-        else:
-            action.notice(f'Found existing PGO profile called {profile_name}')
-            profile_path.touch()
+            pgo_profile_dir = pgo_dir / 'pgo_profiles'
+            profile_path = pgo_profile_dir / profile_name
+            if not profile_path.is_file():
+                with requests.get(f'https://commondatastorage.googleapis.com/chromium-optimization-profiles/pgo_profiles/{profile_name}') as downloaded:
+                    profile_path.write_bytes(downloaded.content)
+            else:
+                action.notice(f'Found existing PGO profile called {profile_name}')
+                profile_path.touch()
 
-    if not args.no_build:
-        if not args.ci or not (source_tree / 'out/Default').exists():
-            # Output args.gn
-            with group('Output args.gn'):
-                (source_tree / 'out/Default').mkdir(parents=True)
-                gn_flags = (_ROOT_DIR / 'ungoogled-chromium' / 'flags.gn').read_text(encoding=ENCODING)
-                gn_flags += '\n'
-                windows_flags = (_ROOT_DIR / 'flags.windows.gn').read_text(encoding=ENCODING)
-                if args.x86:
-                    windows_flags = windows_flags.replace('x64', 'x86')
-                gn_flags += windows_flags
-                (source_tree / 'out/Default/args.gn').write_text(gn_flags, encoding=ENCODING)
+    if not args.ci or (args.step == Step.CREATE_ARGS_GN and (not (source_tree / 'out/Default').exists() or args.force)):
+        # Output args.gn
+        with group('Output args.gn'):
+            (source_tree / 'out/Default').mkdir(parents=True)
+            gn_flags = (_ROOT_DIR / 'ungoogled-chromium' / 'flags.gn').read_text(encoding=ENCODING)
+            gn_flags += '\n'
+            windows_flags = (_ROOT_DIR / 'flags.windows.gn').read_text(encoding=ENCODING)
+            if args.x86:
+                windows_flags = windows_flags.replace('x64', 'x86')
+            gn_flags += windows_flags
+            (source_tree / 'out/Default/args.gn').write_text(gn_flags, encoding=ENCODING)
 
     # Enter source tree to run build commands
     os.chdir(source_tree)
 
-    if not args.no_build:
-        if not args.ci or not os.path.exists('out\\Default\\gn.exe'):
-            # Run GN bootstrap
-            with group('Run gn bootstrap'):
-                _run_build_process(
-                    sys.executable, 'tools\\gn\\bootstrap\\bootstrap.py', '-o', 'out\\Default\\gn.exe',
-                    '--skip-generate-buildfiles')
+    if not args.ci or (args.step == Step.BOOTSTRAP_GN and (not os.path.exists('out\\Default\\gn.exe') or args.force)):
+        # Run GN bootstrap
+        with group('Run gn bootstrap'):
+            _run_build_process(
+                sys.executable, 'tools\\gn\\bootstrap\\bootstrap.py', '-o', 'out\\Default\\gn.exe',
+                '--skip-generate-buildfiles')
 
-            # Run gn gen
-            with group('Run gn gen'):
-                _run_build_process('out\\Default\\gn.exe', 'gen', 'out\\Default', '--fail-on-unused-args')
+        # Run gn gen
+        with group('Run gn gen'):
+            _run_build_process('out\\Default\\gn.exe', 'gen', 'out\\Default', '--fail-on-unused-args')
 
-        # Run ninja
-        if args.ci:
+    # Run ninja
+    if args.ci:
+        if args.step == Step.BUILD:
             with group('Run ninja'):
                 try:
                     _run_build_process_timeout('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',
-                                            'chromedriver', 'mini_installer', timeout=3.5*60*60)
+                                            'chromedriver', 'mini_installer', timeout=int(3.5*60*60))
                 except KeyboardInterrupt:
                     exit(124)
                 except RuntimeError:
                     exit(123)
 
+        if args.step == Step.PACKAGE:
             # package
             with group('Package result'):
                 os.chdir(_ROOT_DIR)
                 subprocess.run([sys.executable, 'package.py'])
-        else:
-            _run_build_process('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',
-                            'chromedriver', 'mini_installer')
+    else:
+        _run_build_process('third_party\\ninja\\ninja.exe', '-C', 'out\\Default', 'chrome',
+                        'chromedriver', 'mini_installer')
 
 
 if __name__ == '__main__':
-    main()
+    tap.Parser(Args).bind(main).run()

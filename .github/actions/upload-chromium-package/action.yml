@@ -1,0 +1,13 @@
+name: 'Upload Chromium package'
+description: 'Uploads the build result as an artifact'
+inputs:
+  project-location:
+    description: Project root folder
+    required: true
+  x86:
+    description: Set to true if building 32-bit
+    required: false
+    default: 'false'
+runs:
+  using: node16
+  main: index.js

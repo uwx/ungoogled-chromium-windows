@@ -30,7 +30,8 @@ jobs:
       matrix:
         os: [windows-latest]
     env:
-      STORE_PATH: 'unset fixme'
+      SEVENZ_PATH: unset fixme
+      STORE_PATH: unset fixme
       CACHE_PREFIX: ${{ matrix.os }}
       PROJECT_LOCATION: C:\ungoogled-chromium-windows
     steps:
@@ -108,7 +109,7 @@ jobs:
       - name: Install node.js dependencies
         id: pnpm-install
         run: pnpm install
-        working-directory: ./.github/actions/stage
+        working-directory: ./.github/actions
 
       - name: Run stage with --no-build flag to download tools and apply patches
         id: prebuild
@@ -124,14 +125,20 @@ jobs:
         id: copy-pgo
         run: Copy-Item -Path $env:PROJECT_LOCATION -Filter *.profdata -Destination $env:GITHUB_WORKSPACE -Recurse
 
+      - name: Get 7zip path
+        run: echo "SEVENZ_PATH=$((Get-Command 7z).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Build Chromium LLVM
         id: build-llvm
         uses: ./.github/actions/stage
         with:
-          finished: ${{ inputs.finished }}
-          from_artifact: ${{ !inputs.first }}
-          x86: false
-          override_command: build_llvm.py
+          tarball-artifact-name: build-artifact-x64
+          tarball-root: ${{ env.PROJECT_LOCATION }}\build
+          tarball-pattern: ${{ env.PROJECT_LOCATION }}\build\src
+          cwd: ${{ env.PROJECT_LOCATION }}
+          run: |
+            python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --no-build
+            python -u build_llvm.py
 
       - name: Upload compiled results
         if: steps.build-llvm.outputs.finished
