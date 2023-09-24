@@ -1,3 +1,4 @@
+# Builds mimalloc (or pulls from Actions cache) and saves as artifact with name = outputs.artifact
 name: Build mimalloc
 
 on:

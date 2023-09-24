@@ -1,18 +1,20 @@
+# Builds LLVM (or pulls from Actions cache) and saves as artifact with name 'chromium-llvm'
 name: Build Chromium LLVM
 
 on:
   workflow_call:
     outputs:
       finished:
-        value: ${{ jobs.build-0.outputs.early-exit || jobs.build-5.outputs.finished }}
+        value: ${{ jobs.check-existing-llvm.outputs.early-exit || jobs.build-5.outputs.finished }}
       has_stage_artifact:
+        description: Set to 'true' if LLVM was built from source and not loaded from cache, so .github/actions/stage has emitted an artifact to be reused
         value: ${{ jobs.build-1.result == 'success' }}
 
 jobs:
   build-mimalloc:
     uses: ./.github/workflows/mimalloc.yml
 
-  build-0:
+  check-existing-llvm:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -43,8 +45,19 @@ jobs:
     outputs:
       early-exit: ${{ steps.cache-check.outputs.cache-hit }}
 
-  build-1: { if: '!needs.build-0.outputs.early-exit', name: 'step 1', needs: [build-mimalloc, build-0], uses: './.github/workflows/step_llvm.yml', with: { num: 1, finished: false, first: true, mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
-  build-2: { if: '!needs.build-0.outputs.early-exit', name: 'step 2', needs: [build-mimalloc, build-0, build-1], uses: './.github/workflows/step_llvm.yml', with: { num: 2, finished: "${{ join(needs.build-1.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
-  build-3: { if: '!needs.build-0.outputs.early-exit', name: 'step 3', needs: [build-mimalloc, build-0, build-2], uses: './.github/workflows/step_llvm.yml', with: { num: 3, finished: "${{ join(needs.build-2.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
-  build-4: { if: '!needs.build-0.outputs.early-exit', name: 'step 4', needs: [build-mimalloc, build-0, build-3], uses: './.github/workflows/step_llvm.yml', with: { num: 4, finished: "${{ join(needs.build-3.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
-  build-5: { if: '!needs.build-0.outputs.early-exit', name: 'step 5', needs: [build-mimalloc, build-0, build-4], uses: './.github/workflows/step_llvm.yml', with: { num: 5, finished: "${{ join(needs.build-4.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+  build-1: { if: '!needs.check-existing-llvm.outputs.early-exit', name: 'step 1', needs: [build-mimalloc, check-existing-llvm], uses: './.github/workflows/step_llvm.yml', with: { num: 1, finished: false, first: true, mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+  build-2: { if: '!needs.check-existing-llvm.outputs.early-exit', name: 'step 2', needs: [build-mimalloc, check-existing-llvm, build-1], uses: './.github/workflows/step_llvm.yml', with: { num: 2, finished: "${{ join(needs.build-1.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+  build-3: { if: '!needs.check-existing-llvm.outputs.early-exit', name: 'step 3', needs: [build-mimalloc, check-existing-llvm, build-2], uses: './.github/workflows/step_llvm.yml', with: { num: 3, finished: "${{ join(needs.build-2.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+  build-4: { if: '!needs.check-existing-llvm.outputs.early-exit', name: 'step 4', needs: [build-mimalloc, check-existing-llvm, build-3], uses: './.github/workflows/step_llvm.yml', with: { num: 4, finished: "${{ join(needs.build-3.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+  build-5: { if: '!needs.check-existing-llvm.outputs.early-exit', name: 'step 5', needs: [build-mimalloc, check-existing-llvm, build-4], uses: './.github/workflows/step_llvm.yml', with: { num: 5, finished: "${{ join(needs.build-4.outputs.finished) == 'true' }}", mimalloc-artifact-name: '${{ needs.build-mimalloc.outputs.artifact }}' } }
+
+  # If last build outputted finished=false and we didn't early exit, then the LLVM build timed out
+  check-timeout:
+    needs: [check-existing-llvm, build-5]
+    if: '!needs.check-existing-llvm.outputs.early-exit && !needs.build-5.outputs.finished'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Timeout build
+      run: |
+        echo "::error::Chromium LLVM build timed out"
+        exit 1

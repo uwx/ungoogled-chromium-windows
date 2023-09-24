@@ -28,3 +28,14 @@ jobs:
   build-10: { name: 'step 10', needs: build-9, uses: './.github/workflows/step.yml', with: { num: 10, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}' } }
   build-11: { name: 'step 11', needs: build-10, uses: './.github/workflows/step.yml', with: { num: 11, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}' } }
   build-12: { name: 'step 12', needs: build-11, uses: './.github/workflows/step.yml', with: { num: 12, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}' } }
+
+  # If last build outputted finished=false, then the chromium build timed out
+  check-timeout:
+    needs: build-12
+    if: '!needs.build-12.outputs.finished'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Timeout build
+      run: |
+        echo "::error::ungoogled-chromium build timed out"
+        exit 1
