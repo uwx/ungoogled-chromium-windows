@@ -48,11 +48,11 @@ jobs:
       - name: Copy ungoogled-chromium stuff to C drive
         run: Copy-Item -Path . -Destination $env:PROJECT_LOCATION -Recurse
 
-      #- name: Install pnpm
-      #  uses: pnpm/action-setup@v2
-      #  with:
-      #    version: 8
-      #    run_install: false
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
 
       - name: Setup python
         uses: actions/setup-python@v4
@@ -103,6 +103,7 @@ jobs:
           variant: sccache
 
       - name: Install node.js dependencies
+        id: pnpm-install
         run: pnpm install
         working-directory: ./.github/actions/stage
 
@@ -177,5 +178,14 @@ jobs:
             **.profdata
             ${{ env.PROJECT_LOCATION }}\**.profdata
           key: ${{ env.CACHE_PREFIX }}-pgo-${{ hashFiles('**.profdata') }}
+
+      - name: Fallback save pnpm cache on build failure
+        if: failure() && steps.pnpm-install.outcome == 'success'
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ env.CACHE_PREFIX }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ env.CACHE_PREFIX }}-pnpm-store-
     outputs:
       finished: ${{ steps.build-llvm.outputs.finished }}
