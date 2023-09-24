@@ -145,11 +145,9 @@ jobs:
 
       - name: Fallback save pnpm cache on build failure
         if: failure() && steps.pnpm-install.outcome == 'success'
-        uses: actions/cache@v3
+        uses: actions/cache/save@v3
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ env.CACHE_PREFIX }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ env.CACHE_PREFIX }}-pnpm-store-
     outputs:
       finished: ${{ steps.stage.outputs.finished }}
