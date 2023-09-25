@@ -44,6 +44,6 @@ runs:
         Remove-Item -Path Modern7z.zip -Force
         Remove-Item -Path Modern7z -Force -Recurse
 
-
+        exit 0
     - shell: pwsh
       run: 7z i
