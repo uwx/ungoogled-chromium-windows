@@ -43,9 +43,30 @@ import domain_substitution
 import prune_binaries
 import patches
 from _common import ENCODING, USE_REGISTRY, ExtractorEnum, get_logger
+import _extraction
 sys.path.pop(0)
 
 _PATCH_BIN_RELPATH = Path('third_party/git/usr/bin/patch.exe')
+
+# patch _extraction._extract_tar_with_7z to use a shell pipeline instead of a python pipeline for performance
+def _extract_tar_with_7z_patched(binary: str, archive_path: Path, output_dir: Path, relative_to: Path):
+    log.debug('Using 7-zip extractor')
+    if not relative_to is None and (output_dir / relative_to).exists():
+        log.error('Temporary unpacking directory already exists: %s', output_dir / relative_to)
+        raise _extraction.ExtractionError()
+    cmd = (
+        binary, 'x', str(archive_path), '-so', '|', binary, 'x', '-si', '-aoa', '-ttar', f'-o{str(output_dir)}'
+    )
+    log.debug('7z command line: %s', ' '.join(cmd))
+
+    result = subprocess.run(cmd, shell=True)
+    if result.returncode != 0:
+        log.error('tar command returned %s', result.returncode)
+        raise _extraction.ExtractionError()
+
+    _extraction._process_relative_to(output_dir, relative_to)
+_extraction._extract_tar_with_7z = _extract_tar_with_7z_patched
+
 
 log = get_logger()
 
