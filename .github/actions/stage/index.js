@@ -96,15 +96,13 @@ async function awaitWithTimeout(promise, ms) {
  * @returns {Promise<[timedOut: boolean, exitCode: number]>}
  */
 async function exec(commandLine, args, options) {
-    const commandArgs = argStringToArray(commandLine)
+    const commandArgs = argStringToArray(commandLine);
     if (commandArgs.length === 0) {
-        throw new Error(`Parameter 'commandLine' cannot be null or empty.`)
+        throw new Error(`Parameter 'commandLine' cannot be null or empty.`);
     }
     // Path to tool to execute should be first arg
-    const toolPath = commandArgs[0]
-    args = commandArgs.slice(1).concat(args || [])
-    const runner = new ToolRunnerWithTimeout(toolPath, args, options)
-    return runner.execWithTimeout()
+    const runner = new ToolRunnerWithTimeout(commandArgs[0], [...commandArgs.slice(1), ...(args || [])], options);
+    return runner.execWithTimeout();
 }
 
 const { extractTar, createTar } = require('./tar');
@@ -175,7 +173,7 @@ async function run() {
     const basedir = process.env.PROJECT_LOCATION || 'C:\\ungoogled-chromium-windows';
 
     const cwd = path.resolve(core.getInput('cwd', { required: false })) || process.cwd();
-    const tarballArtifactName = path.resolve(cwd, core.getInput('tarball-artifact-name', { required: false }));
+    const tarballArtifactName = core.getInput('tarball-artifact-name', { required: false });
     const tarballRoot = path.resolve(cwd, core.getInput('tarball-root', { required: true }));
     const tarballFileName = core.getInput('tarball-file-name', { required: false });
     const run = getExecutor('run', true);
@@ -211,14 +209,18 @@ async function run() {
     /** @type {string | undefined} */
     let failCase;
 
-    const startTime = key && process.env['STAGE_START_' + key] ? Number(process.env['STAGE_START_' + key]) : Date.now();
-    const isExecutionTimedOut = () => timeout && startTime + timeout < Date.now();
-    const calcTimeout = () => Date.now() - (startTime + timeout);
-
-    if (key && !process.env['STAGE_START_' + key]) {
+    /** @type {number} */
+    let startTime;
+    if (key && process.env['STAGE_START_' + key]) {
+        startTime = Number(process.env['STAGE_START_' + key]);
+    } else {
+        startTime = Date.now();
         process.env['STAGE_START_' + key] = ''+startTime;
         storeEnvVariable('STAGE_START_' + key, ''+startTime);
     }
+
+    const isExecutionTimedOut = () => startTime + timeout < Date.now();
+    const calcTimeout = () => Math.max((startTime + timeout) - Date.now(), 0);
 
     if (beforeRun) { // run with no timeout
         // If timed out before we execute beforeRun
