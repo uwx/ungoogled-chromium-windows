@@ -76,7 +76,7 @@ def _get_hash_pairs_patched(download_properties, cache_dir):
     for hash in ('md5','sha1','sha224','sha256','sha384','sha512')[::-1]: # reverse
         if not d.get(hash) is None:
             yield (hash, d.get(hash))
-            break
+            return
     yield from d.items()
 downloads._get_hash_pairs = _get_hash_pairs_patched
 
