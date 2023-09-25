@@ -29,6 +29,8 @@ runs:
         $7zLocation = "$(Split-Path -parent ((7z --shimgen-noop | Select-String $spliter) -split $spliter | ForEach-Object Trim)[1])"
         $installLocation = "$(Join-Path $7zLocation "Codecs")"
 
+        echo $installLocation
+
         7z x Codecs-x64.7z "-o$installLocation"
         rm Codecs-x64.7z
 
