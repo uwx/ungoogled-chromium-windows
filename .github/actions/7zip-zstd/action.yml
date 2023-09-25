@@ -23,10 +23,13 @@ runs:
       shell: pwsh
       working-directory: ${{ runner.temp }}
       run: |
-        echo $(Get-Command 7z)
-        echo $(Get-Command 7z.*)
         aria2c -x 16 "https://github.com/mcmilk/7-Zip-zstd/releases/download/v${{ inputs.version }}/Codecs-x64.7z"
-        7z x Codecs-x64.7z "-o$((Get-Item $((Get-Command 7z).Path)).Directory.FullName)\Codecs"
+
+        $spliter = "path to executable:"
+        $7zLocation = "$(Split-Path -parent ((7z --shimgen-noop | Select-String $spliter) -split $spliter | ForEach-Object Trim)[1])"
+        $installLocation = "$(Join-Path $7zLocation "Codecs")"
+
+        7z x Codecs-x64.7z "-o$installLocation"
         rm Codecs-x64.7z
 
     - shell: pwsh
