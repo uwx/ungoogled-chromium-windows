@@ -230,10 +230,6 @@ def main(args: Args):
         else:
             log.error(message, stacklevel=2)
 
-    if args.ci:
-        set_ci_log()
-
-
     # Set common variables
     source_tree = _ROOT_DIR / 'build' / 'src'
     downloads_cache = _ROOT_DIR / 'build' / 'download_cache'
