@@ -69,6 +69,18 @@ def _extract_tar_with_7z_patched(binary: str, archive_path: Path, output_dir: Pa
     _extraction._process_relative_to(output_dir, relative_to)
 _extraction._extract_tar_with_7z = _extract_tar_with_7z_patched
 
+# there is no point doign every available hash. just try the best one
+_get_hash_pairs_orig = downloads._get_hash_pairs
+def _get_hash_pairs_patched(download_properties, cache_dir):
+    d: dict[str, str] = {hash_name:hash_hex for (hash_name, hash_hex) in _get_hash_pairs_orig(download_properties, cache_dir)}
+    for hash in ('md5','sha1','sha224','sha256','sha384','sha512')[::-1]: # reverse
+        if not d.get(hash) is None:
+            yield (hash, d.get(hash))
+            break
+    yield from d.items()
+downloads._get_hash_pairs = _get_hash_pairs_patched
+
+
 log = logging.getLogger(LOGGER_NAME)
 log.setLevel(logging.DEBUG)
 
