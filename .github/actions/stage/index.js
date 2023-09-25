@@ -215,18 +215,15 @@ async function run() {
     /** @type {string | undefined} */
     let failCase;
 
-    /** @type {number} */
-    let startTime;
-    if (key && process.env['STAGE_START_' + key]) {
-        startTime = Number(process.env['STAGE_START_' + key]);
-    } else {
-        startTime = Date.now();
-        process.env['STAGE_START_' + key] = ''+startTime;
-        storeEnvVariable('STAGE_START_' + key, ''+startTime);
+    /** @type {number | undefined} */
+    let endTime;
+    if (key && process.env['STAGE_END_' + key]) {
+        endTime = Number(process.env['STAGE_END_' + key]);
+        core.info(`This build stage will time out at ${new Date(endTime)}`);
     }
 
-    const isExecutionTimedOut = () => Date.now() > (startTime + timeout);
-    const calcTimeout = () => Math.max((startTime + timeout) - Date.now(), 1);
+    const isExecutionTimedOut = () => endTime && Date.now() > endTime;
+    const calcTimeout = () => Math.max(endTime - Date.now(), 1);
 
     if (beforeRun) { // run with no timeout
         // If timed out before we execute beforeRun
@@ -253,6 +250,13 @@ async function run() {
         }
     } else {
         core.setOutput('before-run-outcome', 'skipped');
+    }
+
+    if (!endTime) {
+        endTime = Date.now() + timeout;
+        process.env['STAGE_END_' + key] = ''+endTime;
+        storeEnvVariable('STAGE_END_' + key, ''+endTime);
+        core.info(`This build stage will time out at ${new Date(endTime)}`);
     }
 
     // If timed out before we execute run
