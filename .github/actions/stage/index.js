@@ -9,6 +9,7 @@ const glob = require('@actions/glob');
 const path = require('path/win32');
 const { ToolRunner, argStringToArray } = require('./execx');
 const { generateCtrlBreakAsync } = require('generate-ctrl-c-event');
+const util = require('util');
 
 /**
  * @typedef {'none' | 'pwsh' | 'cmd' | 'python' | 'node'} Shell
@@ -46,6 +47,7 @@ class ToolRunnerWithTimeout extends ToolRunner {
                     if (proc.exitCode !== null) {
                         return [true, proc.exitCode];
                     }
+                    core.debug(`Sending CTRL+BREAK to process ${util.inspect(proc)} attempt ${i} of 3`);
                     await generateCtrlBreakAsync(proc.pid);
                     await delay(1000);
                 }
@@ -56,6 +58,7 @@ class ToolRunnerWithTimeout extends ToolRunner {
 
                 await awaitWithTimeout(promise, 10_000);
                 if (proc.exitCode === null) { // if process is still running AGAIN
+                    core.debug(`Killing process ${util.inspect(proc)}`);
                     proc.kill(); // kill it with fire
                 }
 
@@ -382,6 +385,7 @@ function getExecutor(inputName, required = false) {
 
         if (shell === 'none') {
             for (const command of multiLineRun) {
+                core.info(`Executing command: ${command}`);
                 const [timedOut, returnCode] = await exec(command, undefined, execOptions);
 
                 if (timedOut || ignoreReturnCodes.includes(returnCode)) {
@@ -404,6 +408,7 @@ function getExecutor(inputName, required = false) {
                 }
             }
         } else {
+            core.info(`Executing command with shell ${shell}: ${singleLineRun}`);
             const [timedOut, returnCode] = await exec(...await wrapInShell(singleLineRun, shell), execOptions);
 
             if (timedOut || ignoreReturnCodes.includes(returnCode)) {
