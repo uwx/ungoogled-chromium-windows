@@ -66,7 +66,7 @@ def _extract_tar_with_7z_patched(binary: str, archive_path: Path, output_dir: Pa
         log.error('tar command returned %s', result.returncode)
         raise _extraction.ExtractionError()
 
-    _extraction._process_relative_to(output_dir, relative_to)
+    _process_relative_to_patched(output_dir, relative_to)
 _extraction._extract_tar_with_7z = _extract_tar_with_7z_patched
 
 # there is no point doign every available hash. just try the best one
@@ -80,6 +80,36 @@ def _get_hash_pairs_patched(download_properties, cache_dir):
     yield from d.items()
 downloads._get_hash_pairs = _get_hash_pairs_patched
 
+# patch process_relative_to to be able to handle non-empty destination directories
+def _relative_recursive(src_dir: Path, dest_dir: Path):
+    for src_path in src_dir.iterdir():
+        dest_path = dest_dir / src_path.relative_to(src_dir)
+        dest_exists = dest_path.exists()
+        if src_path.is_dir() and dest_exists:
+            _relative_recursive(src_path, dest_path) # merge into existing dir
+        else:
+            if dest_exists:
+                dest_path.unlink() # prevent errors
+            src_path.rename(dest_path)
+    src_dir.rmdir() # only removes if empty
+
+def _process_relative_to_patched(unpack_root: Path, relative_to: Path):
+    """
+    For an extractor that doesn't support an automatic transform, move the extracted
+    contents from the relative_to/ directory to the unpack_root
+
+    If relative_to is None, nothing is done.
+    """
+    if relative_to is None:
+        return
+    relative_root = unpack_root / relative_to
+    if not relative_root.is_dir():
+        get_logger().error('Could not find relative_to directory in extracted files: %s',
+                           relative_to)
+        raise _extraction.ExtractionError()
+
+    _relative_recursive(relative_root, unpack_root)
+_extraction._process_relative_to = _process_relative_to_patched
 
 log = logging.getLogger(LOGGER_NAME)
 log.setLevel(logging.DEBUG)
