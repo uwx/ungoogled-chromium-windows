@@ -10,6 +10,7 @@ const path = require('path/win32');
 const { ToolRunner, argStringToArray } = require('./execx');
 const { generateCtrlBreakAsync } = require('generate-ctrl-c-event');
 const util = require('util');
+const glob2 = require('glob');
 
 /**
  * @typedef {'none' | 'pwsh' | 'cmd' | 'python' | 'node'} Shell
@@ -467,7 +468,15 @@ async function saveArtifacts(saveTarballArtifact, tarballGlob, tarballFileName, 
         await delay(5000);
 
         if (saveTarballArtifact) {
-            const globbed = await glob.create(tarballGlob, { matchDirectories: false }).then(e => e.glob());
+            const globbed = util.promisify(glob2)(path.join(tarballGlob, '**'), {
+                windowsPathsNoEscape: true,
+                dot: true,
+                nobrace: true,
+                noext: true,
+                nodir: true,
+                absolute: true,
+            })
+            //const globbed = await glob.create(tarballGlob, { matchDirectories: false }).then(e => e.glob());
 
             await core.group('Tarballing build files', async () => {
                 await createTar(path.join(tarballRoot, tarballFileName), tarballRoot, globbed, 'zstd');
