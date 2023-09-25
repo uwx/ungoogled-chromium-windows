@@ -43,75 +43,14 @@ jobs:
           name: ${{ inputs.mimalloc-artifact-name }}
           path: C:/mimalloc.lib
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - id: common-setup
+        uses: ./.github/actions/common-setup
         with:
-          submodules: recursive
-
-      - name: Copy ungoogled-chromium stuff to C drive
-        run: Copy-Item -Path . -Destination $env:PROJECT_LOCATION -Recurse
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: false
-
-      - name: Setup python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-          cache: 'pip'
-
-      - name: Install python dependencies
-        run: pip install -r requirements.txt
-
-      - name: Get pnpm store directory
-        run: echo "STORE_PATH=$(pnpm store path --silent)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ env.CACHE_PREFIX }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ env.CACHE_PREFIX }}-pnpm-store-
-
-      - name: Setup third-party tool cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ${{ env.PROJECT_LOCATION }}\build\download_cache
-            ${{ env.PROJECT_LOCATION }}\build\src\third_party
-            !${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
-          key: ${{ env.CACHE_PREFIX }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
-          restore-keys: |
-            ${{ env.CACHE_PREFIX }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
-            ${{ env.CACHE_PREFIX }}-downloads-partial-including-extracted-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
-            ${{ env.CACHE_PREFIX }}-downloads-partial-download-only-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
-
-      - name: Setup PGO profile cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ${{ env.PROJECT_LOCATION }}\**.profdata
-          key: ${{ env.CACHE_PREFIX }}-pgo-
-
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          max-size: 512M
-          key: sccache-llvm-${{ env.CACHE_PREFIX }}
-          variant: sccache
-
-      - name: Install node.js dependencies
-        id: pnpm-install
-        run: pnpm install
-        working-directory: ./.github/actions
-
-      - id: install-7z-zstd
-        name: Install 7zip-zstd codecs
-        uses: ./.github/actions/7zip-zstd
+          sccache-limit: 512M
+          sccache-key: llvm
+          os: ${{ matrix.os }}
+          arch: x64
+          project-location: ${{ env.PROJECT_LOCATION }}
 
       - name: Setup environment
         id: setup-environment
@@ -121,7 +60,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{steps.install-7z-zstd.outputs.sevenz-actual-path}}\7z.exe" --step setup-environment
+          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step setup-environment
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Download PGO profiles
@@ -132,7 +71,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{steps.install-7z-zstd.outputs.sevenz-actual-path}}\7z.exe" --step download-pgo-profiles
+          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step download-pgo-profiles
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Create ARGS.gn
@@ -142,7 +81,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{steps.install-7z-zstd.outputs.sevenz-actual-path}}\7z.exe" --step create-args-gn
+          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step create-args-gn
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Bootstrap GN
@@ -152,7 +91,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{steps.install-7z-zstd.outputs.sevenz-actual-path}}\7z.exe" --step bootstrap-gn
+          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step bootstrap-gn
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Build Chromium LLVM
@@ -184,15 +123,15 @@ jobs:
             ${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
           key: local-llvm-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
 
-      - name: Upload .patch rejects on build failure
-        if: failure()
-        uses: actions/upload-artifact@v3
-        with:
-          name: patch-rejects
-          path: |
-            ${{ env.PROJECT_LOCATION }}\**\*.rej
-            **\*.rej
-          retention-days: 90
+      #- name: Upload .patch rejects on build failure
+      #  if: failure()
+      #  uses: actions/upload-artifact@v3
+      #  with:
+      #    name: patch-rejects
+      #    path: |
+      #      ${{ env.PROJECT_LOCATION }}\**\*.rej
+      #      **\*.rej
+      #    retention-days: 90
 
       # Don't save LLVM data if LLVM build may have failed
       - name: Fallback save downloads cache on build failure (1)
@@ -212,19 +151,8 @@ jobs:
             ${{ env.PROJECT_LOCATION }}\build\download_cache
           key: ${{ env.CACHE_PREFIX }}-downloads-partial-download-only-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
 
-      - name: Fallback save PGO cache on build failure
-        if: failure() && env.CACHE_PREFIX != 'unset fixme'
-        uses: actions/cache/save@v3
+      - uses: ./.github/actions/common-teardown
         with:
-          path: |
-            ${{ env.PROJECT_LOCATION }}\**.profdata
-          key: ${{ env.CACHE_PREFIX }}-pgo-${{ env.CACHE_PREFIX }}
-
-      - name: Fallback save pnpm cache on build failure
-        if: failure() && steps.pnpm-install.outcome == 'success'
-        uses: actions/cache/save@v3
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ env.CACHE_PREFIX }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          os: ${{ matrix.os }}
     outputs:
       finished: ${{ steps.build-llvm.outputs.outcome == 'success' }}

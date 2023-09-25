@@ -1,0 +1,20 @@
+name: Common teardown
+description: Common teardown
+inputs:
+  os:
+    description: ''
+    required: true
+outputs:
+  sevenz-actual-path:
+    description: Computed path to 7-zip install directory
+    value: ${{ steps.install.outputs.SEVENZ_PATH }}
+runs:
+  using: composite
+  steps:
+    - name: Fallback save PGO cache on build failure
+      if: failure() && inputs.os != 'unset fixme'
+      uses: actions/cache/save@v3
+      with:
+        path: |
+          ${{ inputs.project-location }}\**.profdata
+        key: ${{ inputs.os }}-pgo-zzzpartial

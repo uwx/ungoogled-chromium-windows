@@ -32,86 +32,24 @@ jobs:
         os: [windows-latest]
     env:
       SEVENZ_PATH: unset fixme
-      STORE_PATH: unset fixme
       CACHE_PREFIX: ${{ matrix.os }}
       PROJECT_LOCATION: C:\ungoogled-chromium-windows
       ARCH_STRING: ${{ inputs.x86 && 'x86' || 'x64' }}
       TIMEOUT_KEY: step
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Copy ungoogled-chromium stuff to C drive
-        run: Copy-Item -Path . -Destination $env:PROJECT_LOCATION -Recurse
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: false
-
-      - name: Setup python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-          cache: pip
-
-      - name: Install python dependencies
-        run: pip install -r requirements.txt
-
-      - name: Get pnpm store directory
-        run: echo "STORE_PATH=$(pnpm store path --silent)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ env.CACHE_PREFIX }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ env.CACHE_PREFIX }}-pnpm-store-
-
       - name: Download previously compiled LLVM
         uses: actions/download-artifact@v3
         with:
           name: chromium-llvm
           path: ${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
 
-      - name: Setup third-party tool cache
-        uses: actions/cache@v3
+      - id: common-setup
+        uses: ./.github/actions/common-setup
         with:
-          path: |
-            ${{ env.PROJECT_LOCATION }}\build\download_cache
-            ${{ env.PROJECT_LOCATION }}\build\src\third_party
-            !${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
-          key: ${{ env.CACHE_PREFIX }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
-          restore-keys: |
-            ${{ env.CACHE_PREFIX }}-downloads-partial-including-extracted-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
-            ${{ env.CACHE_PREFIX }}-downloads-partial-download-only-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
-
-      - name: Setup PGO profile cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ${{ env.PROJECT_LOCATION }}\**.profdata
-          key: ${{ env.CACHE_PREFIX }}-pgo-
-
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          max-size: 5G
-          key: sccache-chromium-${{ env.CACHE_PREFIX }}-${{ env.ARCH_STRING }}
-          variant: sccache
-
-      - name: Install node.js dependencies
-        id: pnpm-install
-        run: pnpm install
-        working-directory: ./.github/actions
-
-      - id: install-7z-zstd
-        name: Install 7zip-zstd codecs
-        uses: ./.github/actions/7zip-zstd
+          sccache-key: chromium
+          os: ${{ matrix.os }}
+          arch: ${{ env.ARCH_STRING }}
+          project-location: ${{ env.PROJECT_LOCATION }}
 
       - name: Setup environment
         id: setup-environment
@@ -121,7 +59,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{steps.install-7z-zstd.outputs.sevenz-actual-path}}\7z.exe" --step setup-environment
+          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step setup-environment
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Download PGO profiles
@@ -131,7 +69,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{steps.install-7z-zstd.outputs.sevenz-actual-path}}\7z.exe" --step download-pgo-profiles
+          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step download-pgo-profiles
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Create ARGS.gn
@@ -141,7 +79,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{steps.install-7z-zstd.outputs.sevenz-actual-path}}\7z.exe" --step create-args-gn
+          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step create-args-gn
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Bootstrap GN
@@ -151,7 +89,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{steps.install-7z-zstd.outputs.sevenz-actual-path}}\7z.exe" --step bootstrap-gn
+          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step bootstrap-gn
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Build
@@ -162,12 +100,12 @@ jobs:
           tarball-root: ${{ env.PROJECT_LOCATION }}\build
           tarball-pattern: ${{ env.PROJECT_LOCATION }}\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{steps.install-7z-zstd.outputs.sevenz-actual-path}}\7z.exe" --step build
+          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step build
           ignore-exit-codes: 124
 
       - name: Package build result
         if: steps.stage.outputs.outcome == 'success'
-        run: python -u build.py --ci --7z-path "${{steps.install-7z-zstd.outputs.sevenz-actual-path}}\7z.exe" --step package
+        run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step package
         working-directory: ${{ env.PROJECT_LOCATION }}
 
       - name: Upload build result
@@ -177,19 +115,5 @@ jobs:
           x86: ${{ inputs.x86 }}
           project-location: ${{ env.PROJECT_LOCATION }}
 
-      - name: Fallback save PGO cache on build failure
-        if: failure() && env.CACHE_PREFIX != 'unset fixme'
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            ${{ env.PROJECT_LOCATION }}\**.profdata
-          key: ${{ env.CACHE_PREFIX }}-pgo-${{ env.CACHE_PREFIX }}
-
-      - name: Fallback save pnpm cache on build failure
-        if: failure() && steps.pnpm-install.outcome == 'success'
-        uses: actions/cache/save@v3
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ env.CACHE_PREFIX }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
     outputs:
       finished: ${{ steps.stage.outputs.outcome == 'success' }}

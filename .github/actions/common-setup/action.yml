@@ -1,0 +1,93 @@
+name: Common setup
+description: Common setup
+inputs:
+  sccache-key:
+    description: ''
+    required: true
+  os:
+    description: ''
+    required: true
+  arch:
+    description: ''
+    required: true
+  sccache-limit:
+    description: ''
+    required: false
+    default: 5G
+  project-location:
+    description: ''
+    required: true
+outputs:
+  sevenz-actual-path:
+    description: Computed path to 7-zip install directory
+    value: ${{ steps.install-7z-zstd.outputs.sevenz-actual-path }}
+runs:
+  using: composite
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Copy ungoogled-chromium stuff to C drive
+      shell: pwsh
+      run: Copy-Item -Path . -Destination $env:PROJECT_LOCATION -Recurse
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        run_install: false
+
+    - name: Setup node
+      uses: actions/setup-node@v3
+      with:
+        node-version: '>=20'
+        cache: pnpm
+        cache-dependency-path: '**/pnpm-lock.yaml'
+
+    - name: Setup python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: pip
+
+    - name: Install python dependencies
+      shell: pwsh
+      run: pip install -r requirements.txt
+
+    - name: Install node.js dependencies
+      shell: pwsh
+      id: pnpm-install
+      run: pnpm install --frozen-lockfile
+      working-directory: ./.github/actions
+
+    - name: Setup PGO profile cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ inputs.project-location }}\**.profdata
+        key: ${{ inputs.os }}-pgo-
+
+    - id: install-7z-zstd
+      name: Install 7zip-zstd codecs
+      uses: ./.github/actions/7zip-zstd
+
+    - name: Setup third-party tool cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ inputs.project-location }}\build\download_cache
+          ${{ inputs.project-location }}\build\src\third_party
+          !${{ inputs.project-location }}\build\src\third_party\llvm-build
+        key: ${{ inputs.os }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
+        restore-keys: |
+          ${{ inputs.os }}-downloads-partial-including-extracted-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
+          ${{ inputs.os }}-downloads-partial-download-only-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
+
+    - name: Setup ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        max-size: ${{ inputs.sccache-size }}
+        key: sccache-${{ inputs.sccache-key }}-${{ inputs.os }}-${{ inputs.arch }}
+        variant: sccache
