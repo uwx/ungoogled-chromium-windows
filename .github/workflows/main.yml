@@ -11,7 +11,7 @@ on:
     types: [updated-from-upstream]
 
 concurrency:
-  group: ${{ github.workflow }}-now-with-llvm
+  group: ${{ github.workflow }}-now-with-llvm-2
   cancel-in-progress: true
 
 permissions:
