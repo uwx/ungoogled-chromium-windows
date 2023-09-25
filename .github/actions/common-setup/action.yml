@@ -24,11 +24,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
-
     - name: Copy ungoogled-chromium stuff to C drive
       shell: pwsh
       run: Copy-Item -Path . -Destination $env:PROJECT_LOCATION -Recurse

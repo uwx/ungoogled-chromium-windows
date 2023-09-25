@@ -37,6 +37,11 @@ jobs:
       ARCH_STRING: ${{ inputs.x86 && 'x86' || 'x64' }}
       TIMEOUT_KEY: step
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
       - name: Download previously compiled LLVM
         uses: actions/download-artifact@v3
         with:

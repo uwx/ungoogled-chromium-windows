@@ -37,6 +37,11 @@ jobs:
       PROJECT_LOCATION: C:\ungoogled-chromium-windows
       TIMEOUT_KEY: step-llvm
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
       - name: Download static mimalloc
         uses: actions/download-artifact@v2
         with:
