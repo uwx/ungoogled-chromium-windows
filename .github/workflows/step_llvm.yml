@@ -123,7 +123,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --step setup-environment
+          run: python -u build.py --ci --step setup-environment
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Download PGO profiles
