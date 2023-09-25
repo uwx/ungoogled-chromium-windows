@@ -403,10 +403,11 @@ exports.ToolRunner = class ToolRunner extends events.EventEmitter {
         return reverse.split('').reverse().join('');
     }
 
-    /** @private
-       * @param {ExecOptions} [options]
-       * @returns {ExecOptions}
-       */
+    /**
+     * @private
+     * @param {ExecOptions} [options]
+     * @returns {ExecOptions}
+     */
     _cloneExecOptions(options) {
         options = options || {};
         const result = {
@@ -416,10 +417,10 @@ exports.ToolRunner = class ToolRunner extends events.EventEmitter {
             windowsVerbatimArguments: options.windowsVerbatimArguments || false,
             failOnStdErr: options.failOnStdErr || false,
             ignoreReturnCode: options.ignoreReturnCode || false,
-            delay: options.delay || 10000
+            delay: options.delay || 10000,
+            outStream: options.outStream || process.stdout,
+            errStream: options.errStream || process.stderr
         };
-        result.outStream = options.outStream || process.stdout;
-        result.errStream = options.errStream || process.stderr;
         return /** @type {ExecOptions} */ (result);
     }
 
@@ -549,9 +550,11 @@ exports.ToolRunner = class ToolRunner extends events.EventEmitter {
             state.CheckComplete();
         });
 
-        /** @type {(value: any) => void} */ let resolve;
+        /** @type {(value: number) => void} */ let resolve;
         /** @type {(reason?: any) => void} */ let reject;
-        const promise = new Promise(async (_resolve, _reject) => {
+
+        /** @type {Promise<number>} */
+        const promise = new Promise((_resolve, _reject) => {
             resolve = _resolve;
             reject = _reject;
         });
@@ -598,6 +601,9 @@ exports.argStringToArray = function argStringToArray(argString) {
     let escaped = false;
     let arg = '';
 
+    /**
+     * @param {string} c
+     */
     function append(c) {
         // we only escape double quotes.
         if (escaped && c !== '"') {

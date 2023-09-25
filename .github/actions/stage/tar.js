@@ -48,6 +48,7 @@ async function execTar(args, cwd) {
     try {
         await exec(`"${await getTarPath(args)}"`, args, { cwd: cwd });
     } catch (error) {
+        // @ts-ignore
         throw new Error(`Tar failed with error: ${error?.message}`);
     }
 }

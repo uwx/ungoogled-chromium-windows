@@ -79,7 +79,7 @@ class ToolRunnerWithTimeout extends ToolRunner {
  * @returns {Promise<{ timedOut: boolean, result: T | Promise<T> }>}
  */
 async function awaitWithTimeout(promise, ms) {
-    const delay = delayCancelable(this.timeout);
+    const delay = delayCancelable(ms);
     const result = await Promise.race([promise, delay]);
     if (result !== delayedSymbol) {
         delay.cancel();
@@ -140,7 +140,7 @@ async function downloadArtifactIfExists(artifactClient, artifactName, path, opti
     try {
         return await artifactClient.downloadArtifact(artifactName, path, options);
     } catch (err) {
-        if (err.message === 'Unable to find any artifacts for the associated workflow' || err.message === `Unable to find an artifact with the name: ${artifactName}`) {
+        if (err && typeof err === 'object' && 'message' in err && (err.message === 'Unable to find any artifacts for the associated workflow' || err.message === `Unable to find an artifact with the name: ${artifactName}`)) {
             return { failed: true };
         }
         throw err;
@@ -152,12 +152,15 @@ async function downloadArtifactIfExists(artifactClient, artifactName, path, opti
  * @param {string} value
  */
 async function storeEnvVariable(key, value) {
-    if (key.includes('=') || key.includes('\n') || key.includes('\r')) {
+    if (/[=\n\r]/.test(key)) {
         throw new Error(`Invalid key: ${key}`)
+    }
+    if (!process.env.GITHUB_ENV) {
+        throw new Error('Not running on GitHub')
     }
     if (value.includes('\n')) {
         // Find longest sequence of string "EOF" followed by amount of $ symbols, add one more to get a unique delimiter nowhere seen in the string
-        const delimiter = value.match(/EOF\$*/g).sort((a,b)=>b.length-a.length)[0] + '$';
+        const delimiter = ((value.match(/EOF\$*/g)?.sort((a,b)=>b.length-a.length)[0]) ?? 'EOF') + '$';
 
         await fs.appendFile(process.env.GITHUB_ENV, `\n${key}<<${delimiter}\n${value}\n${delimiter}`);
     } else {
@@ -173,6 +176,8 @@ async function run() {
     const run = getExecutor('run', true);
     const beforeRun = getExecutor('before-run', false);
     const afterRun = getExecutor('after-run', false);
+
+    if (!run) throw 'fuck';
 
     // paths
     const cwd = path.resolve(core.getInput('cwd', { required: false })) || process.cwd();
@@ -223,13 +228,13 @@ async function run() {
     }
 
     const isExecutionTimedOut = () => endTime && Date.now() > endTime;
-    const calcTimeout = () => Math.max(endTime - Date.now(), 1);
+    const calcTimeout = () => endTime ? Math.max(endTime - Date.now(), 1) : 1;
 
     if (beforeRun) { // run with no timeout
         // If timed out before we execute beforeRun
         if (isExecutionTimedOut()) {
             core.setOutput('results-per-command', []);
-            core.setOutput('before-run-outcome', beforeRun ? 'timeout' : 'skipped');
+            core.setOutput('before-run-outcome', 'timeout');
             core.setOutput('outcome', 'timeout');
             core.setOutput('after-run-outcome', afterRun ? 'timeout' : 'skipped');
             core.notice('Execution has timed out');
@@ -281,7 +286,7 @@ async function run() {
 
     if (outcome === 'failed') {
         core.setOutput('outcome', 'failed');
-        core.setFailed(failCase);
+        core.setFailed(failCase || new Error('Unknown error'));
     } else if (outcome === 'timeout') {
         await saveArtifacts(saveTarballArtifact, tarballGlob, tarballFileName, tarballRoot, artifactClient, tarballArtifactName);
         core.setOutput('outcome', 'timeout');
@@ -450,12 +455,12 @@ function getExecutor(inputName, required = false) {
 }
 
 /**
- * @param {boolean} [saveTarballArtifact]
- * @param {string} [tarballGlob]
- * @param {string} [tarballFileName]
- * @param {string} [tarballRoot]
- * @param {import('@actions/artifact').ArtifactClient} [artifactClient]
- * @param {string} [tarballArtifactName]
+ * @param {boolean} saveTarballArtifact
+ * @param {string} tarballGlob
+ * @param {string} tarballFileName
+ * @param {string} tarballRoot
+ * @param {import('@actions/artifact').ArtifactClient} artifactClient
+ * @param {string} tarballArtifactName
  */
 async function saveArtifacts(saveTarballArtifact, tarballGlob, tarballFileName, tarballRoot, artifactClient, tarballArtifactName) {
     await core.group('Pausing and saving build artifacts for next step', async () => {
