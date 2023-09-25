@@ -41,8 +41,8 @@ runs:
 
         echo $installLocation
 
-        rm Modern7z.zip
-        rm -LiteralPath ".\Modern7z" -Force -Recurse
+        rm -Path Modern7z.zip
+        rm -Path ".\Modern7z" -Force -Recurse
 
 
     - shell: pwsh
