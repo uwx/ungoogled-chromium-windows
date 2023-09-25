@@ -210,6 +210,7 @@ async function run() {
 
     const startTime = key && process.env['STAGE_START_' + key] ? Number(process.env['STAGE_START_' + key]) : Date.now();
     const isExecutionTimedOut = () => timeout && startTime + timeout < Date.now();
+    const calcTimeout = () => Date.now() - (startTime + timeout);
 
     if (key && !process.env['STAGE_START_' + key]) {
         process.env['STAGE_START_' + key] = ''+startTime;
@@ -223,6 +224,8 @@ async function run() {
             core.setOutput('before-run-outcome', beforeRun ? 'timeout' : 'skipped');
             core.setOutput('outcome', 'timeout');
             core.setOutput('after-run-outcome', afterRun ? 'timeout' : 'skipped');
+            core.notice('Execution has timed out');
+            return;
             // NB: there are no artifacts to save here.
         }
 
@@ -247,6 +250,7 @@ async function run() {
         core.setOutput('results-per-command', []);
         core.setOutput('outcome', 'timeout');
         core.setOutput('after-run-outcome', afterRun ? 'timeout' : 'skipped');
+        core.notice('Execution has timed out');
         return;
     }
 
@@ -255,7 +259,7 @@ async function run() {
         ignoreReturnCode: true,
         input: input ? Buffer.from(input, inputEncoding) : undefined,
         failOnStdErr,
-        timeout: timeout - (Date.now() - startTime)
+        timeout: calcTimeout()
     }, shell, ignoreExitCodes));
 
     core.setOutput('results-per-command', resultsPerCommand);
@@ -266,6 +270,7 @@ async function run() {
     } else if (outcome === 'timeout') {
         await saveArtifacts(saveTarballArtifact, tarballGlob, tarballFileName, tarballRoot, artifactClient, tarballArtifactName);
         core.setOutput('outcome', 'timeout');
+        core.notice('Execution has timed out');
     } else {
         if (afterRun) { // run with no timeout
             ({ outcome, failCase } = await afterRun({
