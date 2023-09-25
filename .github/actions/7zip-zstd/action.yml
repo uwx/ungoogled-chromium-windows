@@ -5,6 +5,10 @@ inputs:
     description: Version of 7zip-zstd codecs to install
     required: false
     default: 22.01-v1.5.5-R3
+outputs:
+  sevenz-actual-path:
+    description: Computed path to 7-zip install directory
+    value: ${{ steps.install.outputs.SEVENZ_PATH }}
 runs:
   using: composite
   steps:
@@ -20,6 +24,7 @@ runs:
         echo "/opt/p7z" >> $GITHUB_PATH
 
     - if: runner.os == 'Windows'
+      id: install
       shell: pwsh
       working-directory: ${{ runner.temp }}
       run: |
@@ -28,6 +33,8 @@ runs:
         $spliter = "path to executable:"
         $7zLocation = "$(Split-Path -parent ((7z --shimgen-noop | Select-String $spliter) -split $spliter | ForEach-Object Trim)[1])"
         $installLocation = "$(Join-Path $7zLocation "Codecs")"
+
+        echo "SEVENZ_PATH=$7zLocation" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
         echo $installLocation
 

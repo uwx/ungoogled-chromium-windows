@@ -109,10 +109,8 @@ jobs:
         run: pnpm install
         working-directory: ./.github/actions
 
-      - name: Get 7zip path
-        run: echo "SEVENZ_PATH=$((Get-Command 7z).Path)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Install 7zip-zstd codecs
+      - id: install-7z-zstd
+        name: Install 7zip-zstd codecs
         uses: ./.github/actions/7zip-zstd
 
       - name: Setup environment
@@ -123,7 +121,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --step setup-environment
+          run: python -u build.py --ci --7z-path "${{steps.install-7z-zstd.outputs.sevenz-actual-path}}\7z.exe" --step setup-environment
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Download PGO profiles
@@ -134,7 +132,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --step download-pgo-profiles
+          run: python -u build.py --ci --7z-path "${{steps.install-7z-zstd.outputs.sevenz-actual-path}}\7z.exe" --step download-pgo-profiles
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Create ARGS.gn
@@ -144,7 +142,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --step create-args-gn
+          run: python -u build.py --ci --7z-path "${{steps.install-7z-zstd.outputs.sevenz-actual-path}}\7z.exe" --step create-args-gn
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Bootstrap GN
@@ -154,7 +152,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{env.SEVENZ_PATH}}" --step bootstrap-gn
+          run: python -u build.py --ci --7z-path "${{steps.install-7z-zstd.outputs.sevenz-actual-path}}\7z.exe" --step bootstrap-gn
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Build Chromium LLVM
