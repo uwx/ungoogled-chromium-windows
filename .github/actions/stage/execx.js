@@ -439,6 +439,7 @@ exports.ToolRunner = class ToolRunner extends events.EventEmitter {
         if (options.windowsVerbatimArguments) {
             result.argv0 = `"${toolPath}"`;
         }
+        result.detached = true;
         return result;
     }
 
