@@ -8,6 +8,7 @@
 ungoogled-chromium build script for Microsoft Windows
 """
 
+from datetime import timedelta
 import typed_argparse as tap
 from contextlib import contextmanager
 from enum import Enum, IntEnum
@@ -42,8 +43,9 @@ import downloads
 import domain_substitution
 import prune_binaries
 import patches
-from _common import ENCODING, USE_REGISTRY, ExtractorEnum, get_logger
+from _common import ENCODING, USE_REGISTRY, ExtractorEnum, get_logger, LOGGER_NAME
 import _extraction
+import _common
 sys.path.pop(0)
 
 _PATCH_BIN_RELPATH = Path('third_party/git/usr/bin/patch.exe')
@@ -67,8 +69,45 @@ def _extract_tar_with_7z_patched(binary: str, archive_path: Path, output_dir: Pa
     _extraction._process_relative_to(output_dir, relative_to)
 _extraction._extract_tar_with_7z = _extract_tar_with_7z_patched
 
+log = logging.getLogger(LOGGER_NAME)
+log.setLevel(logging.DEBUG)
 
-log = get_logger()
+# https://stackoverflow.com/a/56944256
+class CustomFormatter(logging.Formatter):
+    grey = "\x1b[38;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+
+    FORMATS = {
+        logging.DEBUG: grey,
+        logging.INFO: grey,
+        logging.WARNING: yellow,
+        logging.ERROR: red,
+        logging.CRITICAL: bold_red,
+    }
+
+    def __init__(self):
+        logging.Formatter.__init__(self, validate=False)
+        self.start_time = time.time()
+
+    def formatMessage(self, record):
+        elapsed_seconds = record.created - self.start_time
+        #using timedelta here for convenient default formatting
+        elapsed = timedelta(seconds = elapsed_seconds)
+
+        color = self.FORMATS.get(record.levelno) or ''
+        return f"{color}{elapsed} {record.levelname} {record.name}:{record.filename}:{record.lineno}: {record.message}{record.exc_info or ''}{self.reset}"
+
+if not log.hasHandlers():
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.DEBUG)
+    console_handler.setFormatter(CustomFormatter())
+
+    log.addHandler(console_handler)
+
+_common.get_logger = lambda: log
 
 def _get_vcvars_path(name='64'):
     """
@@ -140,34 +179,6 @@ def _make_tmp_paths():
     tmp_path = Path(os.environ['TEMP'])
     if not tmp_path.exists():
         tmp_path.mkdir()
-
-def set_ci_log():
-    log.setLevel(logging.NOTSET)
-    for x in log.handlers:
-        x.setLevel(logging.NOTSET)
-
-    # https://stackoverflow.com/a/56944256
-    class CustomFormatter(logging.Formatter):
-        grey = "\x1b[38;20m"
-        yellow = "\x1b[33;20m"
-        red = "\x1b[31;20m"
-        bold_red = "\x1b[31;1m"
-        reset = "\x1b[0m"
-        format_str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
-
-        FORMATS = {
-            logging.DEBUG: logging.Formatter(grey + format_str + reset),
-            logging.INFO: logging.Formatter(grey + format_str + reset),
-            logging.WARNING: logging.Formatter(yellow + format_str + reset),
-            logging.ERROR: logging.Formatter(red + format_str + reset),
-            logging.CRITICAL: logging.Formatter(bold_red + format_str + reset),
-        }
-
-        def format(self, record):
-            formatter = self.FORMATS.get(record.levelno) or logging.Formatter(self.format_str)
-            return formatter.format(record)
-    log.handlers[0].setFormatter(CustomFormatter())
-
 
 class Step(Enum):
     SETUP_ENVIRONMENT = 'setup-environment'
