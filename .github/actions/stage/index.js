@@ -169,26 +169,32 @@ async function run() {
     process.on('SIGINT', function () {
     });
 
-    // Where the repository is cloned to
-    const basedir = process.env.PROJECT_LOCATION || 'C:\\ungoogled-chromium-windows';
-
-    const cwd = path.resolve(core.getInput('cwd', { required: false })) || process.cwd();
-    const tarballArtifactName = core.getInput('tarball-artifact-name', { required: false });
-    const tarballRoot = path.resolve(cwd, core.getInput('tarball-root', { required: true }));
-    const tarballFileName = core.getInput('tarball-file-name', { required: false });
+    // runs
     const run = getExecutor('run', true);
     const beforeRun = getExecutor('before-run', false);
     const afterRun = getExecutor('after-run', false);
-    const input = core.getInput('input', { required: false });
-    const inputEncoding = /** @type {BufferEncoding} */ (core.getInput('input-encoding', { required: false }) || 'utf-8');
-    const ignoreExitCodes = core.getInput('ignore-exit-codes', { required: false }).split(',').map(e => Number(e.trim())).filter(e => !isNaN(e));
-    const failOnStdErr = core.getBooleanInput('fail-on-stderr', { required: false });
+
+    // paths
+    const cwd = path.resolve(core.getInput('cwd', { required: false })) || process.cwd();
+    const tarballRoot = path.resolve(cwd, core.getInput('tarball-root', { required: true }));
+    const tarballGlob = path.resolve(cwd, core.getInput('tarball-pattern', { required: false }) || tarballRoot);
+
+    // archiving
+    const tarballArtifactName = core.getInput('tarball-artifact-name', { required: false });
+    const tarballFileName = core.getInput('tarball-file-name', { required: false });
     const loadTarballArtifactIfExists = core.getBooleanInput('load-tarball-artifact-if-exists', { required: false });
     const saveTarballArtifact = core.getBooleanInput('save-tarball-artifact', { required: false });
-    const tarballGlob = path.resolve(cwd, core.getInput('tarball-pattern', { required: false }) || tarballRoot);
-    const timeout = parseFloat(core.getInput('timeout', { required: false }) || ('' + (3.5 * 60 * 60 * 1000)));
-    const shell = /** @type {Shell} */ (core.getInput('shell', { required: false }) || 'none');
+
+    // execution
+    const shell = /** @type {Shell} */ (core.getInput('shell', { required: false }));
+    const input = core.getInput('input', { required: false });
+    const inputEncoding = /** @type {BufferEncoding} */ (core.getInput('input-encoding', { required: false }));
+    const failOnStdErr = core.getBooleanInput('fail-on-stderr', { required: false });
+    const ignoreExitCodes = core.getInput('ignore-exit-codes', { required: false }).split(',').map(e => Number(e.trim())).filter(e => !isNaN(e));
+
+    // timeout
     const key = core.getInput('key', { required: false });
+    const timeout = Number(core.getInput('timeout', { required: false }))
 
     const artifactClient = artifact.create();
 
@@ -219,8 +225,8 @@ async function run() {
         storeEnvVariable('STAGE_START_' + key, ''+startTime);
     }
 
-    const isExecutionTimedOut = () => startTime + timeout < Date.now();
-    const calcTimeout = () => Math.max((startTime + timeout) - Date.now(), 0);
+    const isExecutionTimedOut = () => Date.now() > (startTime + timeout);
+    const calcTimeout = () => Math.max((startTime + timeout) - Date.now(), 1);
 
     if (beforeRun) { // run with no timeout
         // If timed out before we execute beforeRun

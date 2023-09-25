@@ -25,16 +25,18 @@ inputs:
     description: Non-timeout newline-separated commands to execute after 'run'
     required: false
   cwd:
-    description: Working directory to run commands under
+    description: Working directory for the script. Also where relative paths passed to other inputs are resolved from
     required: false
   timeout:
     description: The timeout for all commands to finish executing, in milliseconds. Default to 3 hours and 30 minutes.
     required: false
+    default: '12600000' # 3.5 * 60 * 60 * 1000
   inputs:
     description: String to pass to STDIN of commands
     required: false
   input-encoding:
     description: Encoding for STDIN, defaults to UTF-8
+    default: utf-8
     required: true
   ignore-exit-codes:
     description: Comma-separated list of numeric exit codes to treat as timeouts if returned from spawned processes
