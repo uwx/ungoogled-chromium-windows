@@ -468,7 +468,7 @@ async function saveArtifacts(saveTarballArtifact, tarballGlob, tarballFileName, 
         await delay(5000);
 
         if (saveTarballArtifact) {
-            const globbed = util.promisify(glob2)(path.join(tarballGlob, '**'), {
+            const globbed = await util.promisify(glob2)(path.join(tarballGlob, '**'), {
                 windowsPathsNoEscape: true,
                 dot: true,
                 nobrace: true,
