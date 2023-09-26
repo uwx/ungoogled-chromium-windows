@@ -10,7 +10,7 @@ const path = require('path/win32');
 const { ToolRunner, argStringToArray } = require('./execx');
 const { generateCtrlBreakAsync } = require('generate-ctrl-c-event');
 const util = require('util');
-const glob2 = require('glob');
+const { glob: glob2 } = require('glob');
 
 /**
  * @typedef {'none' | 'pwsh' | 'cmd' | 'python' | 'node'} Shell
