@@ -42,11 +42,11 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Download previously compiled LLVM
-        uses: actions/download-artifact@v3
-        with:
-          name: chromium-llvm
-          path: ${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
+      #- name: Download previously compiled LLVM
+      #  uses: actions/download-artifact@v3
+      #  with:
+      #    name: chromium-llvm
+      #    path: ${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
 
       - id: common-setup
         uses: ./.github/actions/common-setup
@@ -55,6 +55,8 @@ jobs:
           os: ${{ matrix.os }}
           arch: ${{ env.ARCH_STRING }}
           project-location: ${{ env.PROJECT_LOCATION }}
+
+      - run: curl -s https://raw.githubusercontent.com/chromium/chromium/$((Get-Content ./ungoogled-chromium/chromium_version.txt | Out-String).Trim())/tools/clang/scripts/update.py | python3 - --output-dir=${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build\Release+Asserts
 
       - name: Setup environment
         id: setup-environment
