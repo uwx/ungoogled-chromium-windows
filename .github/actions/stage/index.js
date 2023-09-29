@@ -18,60 +18,6 @@ const { glob: glob2 } = require('glob');
  */
 
 const delayedSymbol = Symbol('delayed');
-class ToolRunnerWithTimeout extends ToolRunner {
-    /**
-     * @param {string} toolPath
-     * @param {string[]} [args]
-     * @param {ExecOptions & { timeout?: number }} [options]
-     */
-    constructor(toolPath, args, options) {
-        super(toolPath, args, options);
-
-        /** @type {number | undefined} */
-        this.timeout = options && options.timeout;
-    }
-
-    /**
-     * @returns {Promise<[timedOut: boolean, exitCode: number]>} number
-     */
-    async execWithTimeout() {
-        const [proc, promise] = await super.exec();
-
-        if (this.timeout !== undefined) {
-            const { timedOut, result } = await awaitWithTimeout(promise, this.timeout)
-            if (!timedOut) { // did not time out
-                return [false, await result];
-            }
-
-            if (proc.exitCode === null && proc.pid !== undefined) { // if process is still running
-                for (let i = 0; i < 3; i++) { // attempt to send ctrl+break
-                    if (proc.exitCode !== null) {
-                        return [true, proc.exitCode];
-                    }
-                    core.debug(`Sending CTRL+BREAK to process ${util.inspect(proc)} attempt ${i} of 3`);
-                    await generateCtrlBreakAsync(proc.pid);
-                    await delay(1000);
-                }
-
-                if (proc.exitCode !== null) {
-                    return [true, proc.exitCode];
-                }
-
-                await awaitWithTimeout(promise, 10_000);
-                if (proc.exitCode === null) { // if process is still running AGAIN
-                    core.debug(`Killing process ${util.inspect(proc)}`);
-                    proc.kill(); // kill it with fire
-                }
-
-                return [true, proc.exitCode || NaN];
-            }
-
-            return [false, proc.exitCode || NaN];
-        } else {
-            return [false, await promise];
-        }
-    }
-}
 
 /**
  * @template T
@@ -94,7 +40,7 @@ async function awaitWithTimeout(promise, ms) {
  * @param {string} commandLine
  * @param {string[]} [args]
  * @param {ExecOptions & { timeout?: number }} [options]
- * @returns {Promise<[timedOut: boolean, exitCode: number]>}
+ * @returns {Promise<{ timedOut: boolean, exitCode: number }>}
  */
 async function exec(commandLine, args, options) {
     const commandArgs = argStringToArray(commandLine);
@@ -102,8 +48,46 @@ async function exec(commandLine, args, options) {
         throw new Error(`Parameter 'commandLine' cannot be null or empty.`);
     }
     // Path to tool to execute should be first arg
-    const runner = new ToolRunnerWithTimeout(commandArgs[0], [...commandArgs.slice(1), ...(args || [])], options);
-    return runner.execWithTimeout();
+    const runner = new ToolRunner(commandArgs[0], [...commandArgs.slice(1), ...(args || [])], options);
+
+    const [proc, promise] = await runner.exec();
+    proc.unref();
+
+    const timeout = options?.timeout;
+    if (timeout == undefined) {
+        return { timedOut: false, exitCode: await promise };
+    }
+
+    const { timedOut, result: exitCode } = await awaitWithTimeout(promise, timeout)
+    if (!timedOut) { // did not time out
+        return { timedOut: false, exitCode: await exitCode };
+    }
+
+    // Wait to see if the process closes itself
+    await delay(1000);
+    if (proc.exitCode !== null || proc.pid === undefined) { // process did exit or we can't find the pid (so we can't kill it)
+        return { timedOut: true, exitCode: proc.exitCode ?? NaN };
+    }
+
+    // if process is still running
+    const maxRetries = 3;
+    for (let i = 0; i < maxRetries; i++) { // attempt to send ctrl+break
+        console.log(`Sending CTRL+BREAK to process ${util.inspect(proc)} attempt ${i+1} of ${maxRetries}`);
+        await generateCtrlBreakAsync(proc.pid);
+        await delay(3000);
+
+        if (proc.exitCode !== null) { // process did exit
+            return { timedOut: true, exitCode: proc.exitCode };
+        }
+    }
+
+    await awaitWithTimeout(promise, 10_000);
+    if (proc.exitCode === null) { // if process is still running AGAIN
+        console.log(`Killing process ${util.inspect(proc)}`);
+        proc.kill(); // kill it with fire
+    }
+
+    return { timedOut: true, exitCode: proc.exitCode || NaN };
 }
 
 const { extractTar, createTar } = require('./tar');
@@ -344,7 +328,7 @@ async function wrapInShell(command, shell) {
         case 'pwsh':
             const pwshPath = await io.which('pwsh', false);
             if (pwshPath) {
-                core.debug(`Using pwsh at path: ${pwshPath}`);
+                console.log(`Using pwsh at path: ${pwshPath}`);
                 return [pwshPath, [
                     '-NoLogo',
                     '-NoProfile',
@@ -356,7 +340,7 @@ async function wrapInShell(command, shell) {
                 ]];
             } else {
                 const powershellPath = await io.which('powershell', true);
-                core.debug(`Using powershell at path: ${powershellPath}`);
+                console.log(`Using powershell at path: ${powershellPath}`);
                 return [powershellPath, [
                     '-NoLogo',
                     '-Sta',
