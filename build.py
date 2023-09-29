@@ -243,6 +243,7 @@ class Args(tap.TypedArgs):
     disable_ssl_verification: bool = tap.arg(help='Disables SSL verification for downloading', default=False)
     step: Step = tap.arg(help='Build step (when building in CI)', default=Step.SETUP_ENVIRONMENT)
     force: bool = tap.arg(default=False)
+    skip_domsub: bool = tap.arg('--skip-domsub', default=False)
 
 def retry_on_fail(msg: str, err: type[BaseException], callback: Callable[[], None]):
     for attempt in range(1, 6):
@@ -337,14 +338,15 @@ def main(args: Args):
                 patch_bin_path=(source_tree / _PATCH_BIN_RELPATH)
             )
 
-        # Substitute domains
-        with group('Substitute domains'):
-            domain_substitution.apply_substitution(
-                _ROOT_DIR / 'ungoogled-chromium' / 'domain_regex.list',
-                _ROOT_DIR / 'ungoogled-chromium' / 'domain_substitution.list',
-                source_tree,
-                None
-            )
+        if not args.skip_domsub:
+            # Substitute domains
+            with group('Substitute domains'):
+                domain_substitution.apply_substitution(
+                    _ROOT_DIR / 'ungoogled-chromium' / 'domain_regex.list',
+                    _ROOT_DIR / 'ungoogled-chromium' / 'domain_substitution.list',
+                    source_tree,
+                    None
+                )
 
     if not args.ci or args.step == Step.DOWNLOAD_PGO_PROFILES:
         with group('Retrieving PGO profiles...'):
