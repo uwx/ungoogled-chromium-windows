@@ -18,19 +18,20 @@ permissions:
   contents: write # to be able to create releases
 
 jobs:
-  #build-llvm:
-  #  uses: ./.github/workflows/build_llvm.yml
+  build-llvm:
+    uses: ./.github/workflows/build_llvm.yml
 
   build-chromium:
     strategy:
       matrix:
         x86: [true, false]
-    #needs: build-llvm
+    needs: build-llvm
     name: ${{ matrix.x86 && 'x86 build' || 'x64 build' }}
     uses: ./.github/workflows/build.yml
     with:
       x86: ${{ matrix.x86 }}
-      has_stage_artifact: false #${{ needs.build-llvm.outputs.has_stage_artifact }}
+      has-stage-artifact: false #${{ needs.build-llvm.outputs.has_stage_artifact }}
+      local-llvm: true
 
   publish-release:
     needs: build-chromium
