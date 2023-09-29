@@ -59,7 +59,7 @@ jobs:
       - run: |
           $CHROMIUM_VERSION = $((Get-Content ./ungoogled-chromium/chromium_version.txt | Out-String).Trim())
           curl -s https://raw.githubusercontent.com/chromium/chromium/$CHROMIUM_VERSION/tools/clang/scripts/update.py | python3 - --output-dir=${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build\Release+Asserts
-          $CLANG_FORMAT_HASH = ((Invoke-WebRequest https://github.com/chromium/chromium/raw/$CHROMIUM_VERSION/buildtools/win/clang-format.exe.sha1).Content.Split([Environment]::NewLine) | Out-String).Trim())
+          $CLANG_FORMAT_HASH = ((Invoke-WebRequest https://github.com/chromium/chromium/raw/$CHROMIUM_VERSION/buildtools/win/clang-format.exe.sha1).Content.Split([Environment]::NewLine) | Out-String).Trim()
           Invoke-WebRequest -Uri https://commondatastorage.googleapis.com/chromium-clang-format/$CLANG_FORMAT_HASH -OutFile ${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build\Release+Asserts\bin\clang-format.exe
 
       - name: Setup environment
