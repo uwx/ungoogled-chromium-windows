@@ -267,6 +267,8 @@ async function run() {
         timeout: calcTimeout()
     }, shell, ignoreExitCodes));
 
+    console.log(`Command execution completed with outcome: ${outcome} (Fail case: ${failCase})`)
+
     core.setOutput('results-per-command', resultsPerCommand);
 
     if (outcome === 'failed') {
@@ -452,6 +454,7 @@ async function saveArtifacts(saveTarballArtifact, tarballGlob, tarballFileName, 
         await delay(5000);
 
         if (saveTarballArtifact) {
+            console.time('glob');
             const globbed = await util.promisify(glob2)(path.join(tarballGlob, '**'), {
                 windowsPathsNoEscape: true,
                 dot: true,
@@ -459,7 +462,9 @@ async function saveArtifacts(saveTarballArtifact, tarballGlob, tarballFileName, 
                 noext: true,
                 nodir: true,
                 absolute: true,
-            })
+            });
+            console.timeEnd('glob');
+            console.log(`Globbed ${globbed.length} files`);
             //const globbed = await glob.create(tarballGlob, { matchDirectories: false }).then(e => e.glob());
 
             await core.group('Tarballing build files', async () => {
