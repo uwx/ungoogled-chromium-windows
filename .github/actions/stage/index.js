@@ -222,7 +222,7 @@ async function run() {
             core.setOutput('before-run-outcome', 'timeout');
             core.setOutput('outcome', 'timeout');
             core.setOutput('after-run-outcome', afterRun ? 'timeout' : 'skipped');
-            core.notice('Execution has timed out');
+            core.notice('Timed out before before-hook execution');
             return;
             // NB: there are no artifacts to save here.
         }
@@ -255,7 +255,7 @@ async function run() {
         core.setOutput('results-per-command', []);
         core.setOutput('outcome', 'timeout');
         core.setOutput('after-run-outcome', afterRun ? 'timeout' : 'skipped');
-        core.notice('Execution has timed out');
+        core.notice('Timed out before main command execution');
         return;
     }
 
@@ -388,9 +388,9 @@ function getExecutor(inputName, required = false) {
         if (shell === 'none') {
             for (const command of multiLineRun) {
                 core.info(`Executing command: ${command}`);
-                const [timedOut, returnCode] = await exec(command, undefined, execOptions);
+                const {timedOut, exitCode} = await exec(command, undefined, execOptions);
 
-                if (timedOut || ignoreReturnCodes.includes(returnCode)) {
+                if (timedOut || ignoreReturnCodes.includes(exitCode)) {
                     resultsPerCommand.push('timeout');
                     return {
                         outcome: 'timeout',
@@ -399,21 +399,21 @@ function getExecutor(inputName, required = false) {
                     };
                 }
 
-                resultsPerCommand.push(returnCode);
+                resultsPerCommand.push(exitCode);
 
-                if (returnCode !== 0) {
+                if (exitCode !== 0) {
                     return {
                         outcome: 'failed',
                         resultsPerCommand,
-                        failCase: `Command ${command} returned exit code: ${returnCode}`
+                        failCase: `Command ${command} returned exit code: ${exitCode}`
                     };
                 }
             }
         } else {
             core.info(`Executing command with shell ${shell}: ${singleLineRun}`);
-            const [timedOut, returnCode] = await exec(...await wrapInShell(singleLineRun, shell), execOptions);
+            const {timedOut, exitCode} = await exec(...await wrapInShell(singleLineRun, shell), execOptions);
 
-            if (timedOut || ignoreReturnCodes.includes(returnCode)) {
+            if (timedOut || ignoreReturnCodes.includes(exitCode)) {
                 resultsPerCommand.push('timeout');
                 return {
                     outcome: 'timeout',
@@ -421,13 +421,13 @@ function getExecutor(inputName, required = false) {
                 };
             }
 
-            resultsPerCommand.push(returnCode);
+            resultsPerCommand.push(exitCode);
 
-            if (returnCode !== 0) {
+            if (exitCode !== 0) {
                 return {
                     outcome: 'failed',
                     resultsPerCommand,
-                    failCase: `${shell} command '${singleLineRun}' returned exit code: ${returnCode}`
+                    failCase: `${shell} command '${singleLineRun}' returned exit code: ${exitCode}`
                 };
             }
         }
