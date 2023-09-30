@@ -20,15 +20,6 @@ index 1abebf0092..350e824155 100755
    if args.bolt:
      projects += ';bolt'
 
-@@ -841,7 +841,7 @@ def main():
-       bootstrap_targets += ';ARM;AArch64'
-     bootstrap_args = base_cmake_args + goma_cmake_args + [
-         '-DLLVM_TARGETS_TO_BUILD=' + bootstrap_targets,
--        '-DLLVM_ENABLE_PROJECTS=clang;lld',
-+        '-DLLVM_ENABLE_PROJECTS=clang;lld;polly',
-         '-DLLVM_ENABLE_RUNTIMES=' + ';'.join(runtimes),
-         '-DCMAKE_INSTALL_PREFIX=' + LLVM_BOOTSTRAP_INSTALL_DIR,
-         '-DCMAKE_C_FLAGS=' + ' '.join(cflags),
 @@ -901,7 +901,7 @@ def main():
      os.chdir(LLVM_INSTRUMENTED_DIR)
 
