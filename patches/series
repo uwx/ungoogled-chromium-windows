@@ -24,3 +24,4 @@ ungoogled-chromium/windows/windows-fix-licenses-gn-path.patch
 ungoogled-chromium/windows/windows-fix-missing-clang-features.patch
 uwx/RobRich-win64-avx2.patch
 uwx/RobRich-llvm-avx2.patch
+uwx/llvm-build-fix.patch
