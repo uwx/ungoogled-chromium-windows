@@ -287,7 +287,7 @@ def main(args: Args):
         # Get download metadata (DownloadInfo)
         download_info = downloads.DownloadInfo([
             _ROOT_DIR / 'downloads.ini',
-            _ROOT_DIR / 'ungoogled-chromium' / 'downloads.ini',
+            #_ROOT_DIR / 'ungoogled-chromium' / 'downloads.ini',
         ])
 
         # Retrieve downloads
