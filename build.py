@@ -360,6 +360,7 @@ def main(args: Args):
                 action.set_env('PGO_PROFILE_NAME', profile_name)
 
             pgo_profile_dir = pgo_dir / 'pgo_profiles'
+            pgo_profile_dir.mkdir(parents=True, exist_ok=True)
             profile_path = pgo_profile_dir / profile_name
             if not profile_path.is_file():
                 with requests.get(f'https://commondatastorage.googleapis.com/chromium-optimization-profiles/pgo_profiles/{profile_name}') as downloaded:
