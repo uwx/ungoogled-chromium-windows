@@ -1,61 +1,26 @@
 diff --git a/tools/clang/scripts/build.py b/tools/clang/scripts/build.py
-index e931b3d1efda6..207b823396f48 100755
+index 1abebf0092..350e824155 100755
 --- a/tools/clang/scripts/build.py
 +++ b/tools/clang/scripts/build.py
-@@ -377,6 +377,10 @@ def BuildLibXml2():
-           '-DLIBXML2_WITH_XPATH=OFF',
-           '-DLIBXML2_WITH_XPTR=OFF',
-           '-DLIBXML2_WITH_ZLIB=OFF',
-+          '-DCMAKE_C_FLAGS_RELEASE=-O3 -DNDEBUG -w -march=x86-64-v3 -mprefer-avx128 -ffp-contract=fast -fmerge-all-constants -fipa-pta -fgraphite-identity -floop-nest-optimize -pipe -fdata-sections -ffunction-sections ',
-+          '-DCMAKE_EXE_LINKER_FLAGS=-Wl,-O1 -Wl,--gc-sections -Wl,--as-needed -Wl,--push-state,C:/mimalloc.lib,--pop-state ',
-+          '-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-O1 -Wl,--gc-sections -Wl,--as-needed -Wl,--push-state,C:/mimalloc.lib,--pop-state ',
-+          '-DCMAKE_MODULE_LINKER_FLAGS=-Wl,-O1 -Wl,--gc-sections -Wl,--as-needed -Wl,--push-state,C:/mimalloc.lib,--pop-state ',
-           '..',
-       ],
-       setenv=True)
-@@ -721,9 +730,11 @@ def main():
+@@ -191,7 +191,7 @@ def GetCommitDescription(commit):
+   Needs to be called from inside the git repository dir."""
+   git_exe = 'git.bat' if sys.platform.startswith('win') else 'git'
+   return subprocess.check_output([
+-      git_exe, 'describe', '--long', '--abbrev=8', '--match=*llvmorg-*-init',
++      'git', 'describe', '--long', '--abbrev=8', '--match=*llvmorg-*-init',
+       commit
+   ], universal_newlines=True).rstrip()
 
-   global CLANG_REVISION, PACKAGE_VERSION, LLVM_BUILD_DIR
-
--  if (args.pgo or args.thinlto) and not args.bootstrap:
--    print('--pgo/--thinlto requires --bootstrap')
-+  if not args.bootstrap:
-+    print('Customized build script requires --bootstrap')
-     return 1
-+  if args.with_goma:
-+    print('Customized build script does not support --with-goma')
-   if args.with_android and not os.path.exists(ANDROID_NDK_DIR):
-     print('Android NDK not found at ' + ANDROID_NDK_DIR)
-     print('The Android NDK is needed to build a Clang whose -fsanitize=address')
-@@ -804,14 +815,12 @@ def main():
-   # LLVM_ENABLE_LLD).
-   cc, cxx, lld = None, None, None
-
--  cflags = []
--  cxxflags = []
--  ldflags = []
-+  cflags = [ '-O3 -DNDEBUG -w -march=x86-64-v3 -ffp-contract=fast -fmerge-all-constants -fdata-sections -ffunction-sections' ]
-+  cxxflags = [ '-O3 -DNDEBUG -w -march=x86-64-v3 -ffp-contract=fast -fmerge-all-constants -fdata-sections -ffunction-sections' ]
-+  ldflags = [ '-fuse-ld=lld -Wl,-O2 -Wl,--gc-sections -Wl,--icf=all -Wl,--as-needed -Wl,--push-state,C:/mimalloc.lib,--pop-state' ]
+@@ -696,7 +696,7 @@ def main():
+   ldflags = []
 
    targets = 'AArch64;ARM;LoongArch;Mips;PowerPC;RISCV;SystemZ;WebAssembly;X86'
 -  projects = 'clang;lld;clang-tools-extra'
--  if args.bolt:
--    projects += ';bolt'
-+  projects = 'clang;lld;clang-tools-extra;polly;bolt'
++  projects = 'clang;lld;clang-tools-extra;polly'
+   if args.bolt:
+     projects += ';bolt'
 
-   pic_default = sys.platform == 'win32'
-   pic_mode = 'ON' if args.pic or pic_default else 'OFF'
-@@ -823,7 +832,7 @@ def main():
-       '-DLLVM_ENABLE_PROJECTS=' + projects,
-       '-DLLVM_ENABLE_RUNTIMES=compiler-rt',
-       '-DLLVM_TARGETS_TO_BUILD=' + targets,
--      f'-DLLVM_ENABLE_PIC={pic_mode}',
-+      '-DLLVM_ENABLE_PIC=ON',
-       '-DLLVM_ENABLE_TERMINFO=OFF',
-       '-DLLVM_ENABLE_Z3_SOLVER=OFF',
-       '-DCLANG_PLUGIN_SUPPORT=OFF',
-@@ -960,11 +969,11 @@ def main():
+@@ -841,7 +841,7 @@ def main():
        bootstrap_targets += ';ARM;AArch64'
      bootstrap_args = base_cmake_args + goma_cmake_args + [
          '-DLLVM_TARGETS_TO_BUILD=' + bootstrap_targets,
@@ -63,27 +28,17 @@ index e931b3d1efda6..207b823396f48 100755
 +        '-DLLVM_ENABLE_PROJECTS=clang;lld;polly',
          '-DLLVM_ENABLE_RUNTIMES=' + ';'.join(runtimes),
          '-DCMAKE_INSTALL_PREFIX=' + LLVM_BOOTSTRAP_INSTALL_DIR,
--        '-DCMAKE_C_FLAGS=' + ' '.join(cflags),
--        '-DCMAKE_CXX_FLAGS=' + ' '.join(cxxflags),
-+        '-DCMAKE_C_FLAGS=-mprefer-vector-width=128 ' + ' '.join(cflags),
-+        '-DCMAKE_CXX_FLAGS=-mprefer-vector-width=128 ' + ' '.join(cxxflags),
-         '-DCMAKE_EXE_LINKER_FLAGS=' + ' '.join(ldflags),
-         '-DCMAKE_SHARED_LINKER_FLAGS=' + ' '.join(ldflags),
-         '-DCMAKE_MODULE_LINKER_FLAGS=' + ' '.join(ldflags),
-@@ -1020,9 +1029,9 @@ def main():
+         '-DCMAKE_C_FLAGS=' + ' '.join(cflags),
+@@ -901,7 +901,7 @@ def main():
      os.chdir(LLVM_INSTRUMENTED_DIR)
 
      instrument_args = base_cmake_args + [
 -        '-DLLVM_ENABLE_PROJECTS=clang',
--        '-DCMAKE_C_FLAGS=' + ' '.join(cflags),
--        '-DCMAKE_CXX_FLAGS=' + ' '.join(cxxflags),
 +        '-DLLVM_ENABLE_PROJECTS=clang;polly',
-+        '-DCMAKE_C_FLAGS=-mprefer-vector-width=128 -mllvm -vp-counters-per-site=3 -mllvm -polly -mllvm -polly-invariant-load-hoisting ' + ' '.join(cflags),
-+        '-DCMAKE_CXX_FLAGS=-mprefer-vector-width=128 -mllvm -vp-counters-per-site=3 -mllvm -polly -mllvm -polly-invariant-load-hoisting ' + ' '.join(cxxflags),
+         '-DCMAKE_C_FLAGS=' + ' '.join(cflags),
+         '-DCMAKE_CXX_FLAGS=' + ' '.join(cxxflags),
          '-DCMAKE_EXE_LINKER_FLAGS=' + ' '.join(ldflags),
-         '-DCMAKE_SHARED_LINKER_FLAGS=' + ' '.join(ldflags),
-         '-DCMAKE_MODULE_LINKER_FLAGS=' + ' '.join(ldflags),
-@@ -1065,8 +1074,12 @@ def main():
+@@ -946,8 +946,11 @@ def main():
      with open(training_source, 'wb') as f:
        DownloadUrl(CDS_URL + '/' + training_source, f)
      train_cmd = [os.path.join(LLVM_INSTRUMENTED_DIR, 'bin', 'clang++'),
@@ -93,12 +48,11 @@ index e931b3d1efda6..207b823396f48 100755
 +                '-march=x86-64-v3', '-ffp-contract=fast',
 +                '-fmerge-all-constants', '-fdata-sections', '-ffunction-sections',
 +                '-mllvm', '-polly', '-mllvm', '-polly-invariant-load-hoisting',
-+                '-g', '-std=c++14','-fno-exceptions', '-fno-rtti', '-w', '-c',
-+                training_source]
++                '-g', '-std=c++14','-fno-exceptions', '-fno-rtti', '-w', '-c',]
      if sys.platform == 'darwin':
        train_cmd.extend(['-isysroot', isysroot])
      RunCommand(train_cmd, setenv=True)
-@@ -1105,7 +1118,7 @@ def main():
+@@ -986,7 +989,7 @@ def main():
    # Keep static relocations in the executable for BOLT to analyze. Resolve all
    # symbols on program start to allow BOLT's PLT optimization.
    if args.bolt:
@@ -107,7 +61,7 @@ index e931b3d1efda6..207b823396f48 100755
 
    chrome_tools = []
    if not args.no_tools:
-@@ -1116,8 +1129,8 @@ def main():
+@@ -997,8 +1000,8 @@ def main():
    if lld is not None: base_cmake_args.append('-DCMAKE_LINKER=' + lld)
    final_install_dir = args.install_dir if args.install_dir else LLVM_BUILD_DIR
    cmake_args = base_cmake_args + [
@@ -118,7 +72,7 @@ index e931b3d1efda6..207b823396f48 100755
        '-DCMAKE_EXE_LINKER_FLAGS=' + ' '.join(ldflags),
        '-DCMAKE_SHARED_LINKER_FLAGS=' + ' '.join(ldflags),
        '-DCMAKE_MODULE_LINKER_FLAGS=' + ' '.join(ldflags),
-@@ -1132,8 +1145,23 @@ def main():
+@@ -1013,8 +1016,23 @@ def main():
      ])
    if args.pgo:
      cmake_args.append('-DLLVM_PROFDATA_FILE=' + LLVM_PROFDATA_FILE)
@@ -142,7 +96,7 @@ index e931b3d1efda6..207b823396f48 100755
    if sys.platform == 'win32':
      cmake_args.append('-DLLVM_ENABLE_ZLIB=FORCE_ON')
 
-@@ -1438,7 +1466,7 @@ def main():
+@@ -1316,7 +1334,7 @@ def main():
      # Instrument.
      RunCommand([
          'bin/llvm-bolt', 'bin/clang', '-o', 'bin/clang-bolt.inst',
@@ -151,7 +105,7 @@ index e931b3d1efda6..207b823396f48 100755
          '--instrumentation-file=' +
          os.path.join(bolt_profiles_dir, 'prof.fdata')
      ])
-@@ -1467,6 +1495,8 @@ def main():
+@@ -1345,6 +1363,8 @@ def main():
          os.path.join(LLVM_BUILD_DIR, 'bin/clang-bolt.inst'),
          '-DCMAKE_ASM_COMPILER_ID=Clang',
      ]
@@ -160,7 +114,7 @@ index e931b3d1efda6..207b823396f48 100755
      RunCommand(['cmake'] + bolt_train_cmake_args +
                 [os.path.join(LLVM_DIR, 'llvm')])
      RunCommand([
-@@ -1483,9 +1513,14 @@ def main():
+@@ -1361,9 +1381,14 @@ def main():
      ])
      RunCommand([
          'bin/llvm-bolt', 'bin/clang', '-o', 'bin/clang-bolt.opt', '-data',
