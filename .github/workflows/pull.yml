@@ -13,21 +13,23 @@ jobs:
     steps:
       - name: Get commit SHA before merging
         id: ref-before
-        run: echo "ref=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        run: echo "ref=$((git rev-parse HEAD).Trim())" >> $GITHUB_OUTPUT
       - name: Checkout
         uses: actions/checkout@v2
         with:
           ref: master             # set the branch to merge to
           fetch-depth: 0
       - name: Merge Upstream
-        uses: exions/merge-upstream@v1
+        uses: discdiver/merge-from-upstream-repo@v0.0.9
         with:
+          useremail: github-actions[bot]@users.noreply.github.com
+          username: github-actions[bot]
           upstream: ungoogled-software/ungoogled-chromium-windows      # set the upstream repo
           upstream-branch: master   # set the upstream branch to merge from
           branch: master          # set the branch to merge to
       - name: Get commit SHA after merging
         id: ref-after
-        run: echo "ref=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        run: echo "ref=$((git rev-parse HEAD).Trim())" >> $GITHUB_OUTPUT
       - name: Trigger new build workflow
         if: steps.ref-before.outputs.ref != steps.ref-after.outputs.ref
         uses: peter-evans/repository-dispatch@v2.1.2
