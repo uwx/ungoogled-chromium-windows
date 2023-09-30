@@ -43,7 +43,7 @@ import downloads
 import domain_substitution
 import prune_binaries
 import patches
-from _common import ENCODING, USE_REGISTRY, ExtractorEnum, get_logger, LOGGER_NAME
+from _common import ENCODING, USE_REGISTRY, ExtractorEnum, get_logger, LOGGER_NAME, get_chromium_version
 import _extraction
 import _common
 sys.path.pop(0)
@@ -283,6 +283,11 @@ def main(args: Args):
         source_tree.mkdir(parents=True, exist_ok=True)
         downloads_cache.mkdir(parents=True, exist_ok=True)
         _make_tmp_paths()
+
+        with group('Cloning Chromium from GitHub...'):
+            subprocess.run((f'git clone --recursive --shallow-submodules --depth 1 --branch {get_chromium_version} https://github.com/chromium/chromium', source_tree),
+                check=True,
+                encoding=ENCODING)
 
         # Get download metadata (DownloadInfo)
         download_info = downloads.DownloadInfo([
