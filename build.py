@@ -285,7 +285,7 @@ def main(args: Args):
         _make_tmp_paths()
 
         with group('Cloning Chromium from GitHub...'):
-            subprocess.run((f'git clone --recursive --shallow-submodules --depth 1 --branch {get_chromium_version} https://github.com/chromium/chromium', source_tree),
+            subprocess.run(('git', 'clone', '--recursive', '--shallow-submodules', '--depth', '1', '--branch', get_chromium_version(), 'https://github.com/chromium/chromium', source_tree),
                 check=True,
                 encoding=ENCODING)
 
