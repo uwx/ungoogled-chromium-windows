@@ -284,15 +284,15 @@ def main(args: Args):
         downloads_cache.mkdir(parents=True, exist_ok=True)
         _make_tmp_paths()
 
-        with group('Cloning Chromium from GitHub...'):
-            subprocess.run(('git', 'clone', '--recurse-submodules', '-j8', '--shallow-submodules', '--depth', '1', '--branch', get_chromium_version(), 'https://github.com/chromium/chromium', source_tree),
-                check=True,
-                encoding=ENCODING)
+        #with group('Cloning Chromium from GitHub...'):
+        #    subprocess.run(('git', 'clone', '--recurse-submodules', '-j8', '--shallow-submodules', '--depth', '1', '--branch', get_chromium_version(), 'https://github.com/chromium/chromium', source_tree),
+        #        check=True,
+        #        encoding=ENCODING)
 
         # Get download metadata (DownloadInfo)
         download_info = downloads.DownloadInfo([
             _ROOT_DIR / 'downloads.ini',
-            #_ROOT_DIR / 'ungoogled-chromium' / 'downloads.ini',
+            _ROOT_DIR / 'ungoogled-chromium' / 'downloads.ini',
         ])
 
         # Retrieve downloads
