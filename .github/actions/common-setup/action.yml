@@ -28,6 +28,12 @@ runs:
       shell: pwsh
       run: Copy-Item -Path . -Destination $env:PROJECT_LOCATION -Recurse
 
+    - name: Clone chromium repo
+      shell: pwsh
+      run: |
+        $CHROMIUM_VERSION = $((Get-Content ./ungoogled-chromium/chromium_version.txt | Out-String).Trim())
+        git clone --recursive --shallow-submodules --depth 1 --branch $CHROMIUM_VERSION https://github.com/chromium/chromium ${{ inputs.project-location }}\build\src
+
     - name: Install pnpm
       uses: pnpm/action-setup@v2
       with:
