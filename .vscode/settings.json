@@ -3,7 +3,8 @@
         "https://json.schemastore.org/github-workflow.json": "file:///e%3A/TempStuff/ungoogled-chromium-windows/.github/workflows/step.yml"
     },
     "python.analysis.extraPaths": [
-        "./ungoogled-chromium/utils"
+        "./ungoogled-chromium/utils",
+        "./ungoogled-chromium/utils/third_party"
     ],
     "python.analysis.typeCheckingMode": "basic",
     "python.linting.mypyEnabled": true,
