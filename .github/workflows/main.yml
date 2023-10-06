@@ -31,7 +31,7 @@ jobs:
     with:
       x86: ${{ matrix.x86 }}
       has-stage-artifact: false #${{ needs.build-llvm.outputs.has_stage_artifact }}
-      local-llvm: true
+      local-llvm: false
 
   publish-release:
     needs: build-chromium
