@@ -191,7 +191,7 @@ async function run() {
     const input = core.getInput('input', { required: false });
     const inputEncoding = /** @type {BufferEncoding} */ (core.getInput('input-encoding', { required: false }));
     const failOnStdErr = core.getBooleanInput('fail-on-stderr', { required: false });
-    const ignoreExitCodes = core.getInput('ignore-exit-codes', { required: false }).split(',').map(e => Number(e.trim())).filter(e => !isNaN(e));
+    const ignoreExitCodes = core.getInput('ignore-exit-codes', { required: false }).split(',').map(e => Number(e.trim())).filter(e => !isNaN(e) && e !== 0);
 
     // timeout
     const key = core.getInput('key', { required: false });
