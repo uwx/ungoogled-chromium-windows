@@ -29,11 +29,15 @@ jobs:
   build-10: { name: 'step 10', needs: build-9, uses: './.github/workflows/step.yml', with: { num: 10, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
   build-11: { name: 'step 11', needs: build-10, uses: './.github/workflows/step.yml', with: { num: 11, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
   build-12: { name: 'step 12', needs: build-11, uses: './.github/workflows/step.yml', with: { num: 12, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-13: { name: 'step 13', needs: build-12, uses: './.github/workflows/step.yml', with: { num: 13, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-14: { name: 'step 14', needs: build-13, uses: './.github/workflows/step.yml', with: { num: 14, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-15: { name: 'step 15', needs: build-14, uses: './.github/workflows/step.yml', with: { num: 15, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-16: { name: 'step 15', needs: build-15, uses: './.github/workflows/step.yml', with: { num: 16, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
 
   # If last build outputted finished=false, then the chromium build timed out
   check-timeout:
-    needs: build-12
-    if: '!needs.build-12.outputs.finished'
+    needs: build-16
+    if: '!needs.build-16.outputs.finished'
     runs-on: ubuntu-latest
     steps:
     - name: Timeout build
