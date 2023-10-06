@@ -17,6 +17,34 @@ const IS_WINDOWS = process.platform === 'win32';
  * @typedef {import('@actions/exec/lib/interfaces').ExecOptions} ExecOptions
  */
 
+exports.ExecPublicState = class ExecPublicState {
+    /**
+     * @param {child.ChildProcess} cp
+     * @param {Promise<number>} promise
+     * @param {ExecState} state
+     */
+    constructor(cp, promise, state) {
+        this.cp = cp;
+        this.processClosedPromise = promise;
+        this.state = state;
+    }
+
+    unref() { return this.cp.unref(); }
+    get pid() { return this.cp.pid ?? -1; }
+    kill() { return this.cp.kill(); }
+
+    /** @default false */
+    get processClosed() { return this.state.processClosed; }; // tracks whether the process has exited and stdio is closed
+    /** @default '' */
+    get processError() { return this.state.processError; }
+    /** @default 0 */
+    get processExitCode() { return this.state.processExitCode; }
+    /** @default false */
+    get processExited() { return this.state.processExited; }; // tracks whether the process has exited
+    /** @default false */
+    get processStderr() { return this.state.processStderr; }; // tracks whether stderr was written to
+}
+
 /*
  * Class for running command line tools. Handles quoting and arg parsing in a platform agnostic way.
  */
@@ -448,7 +476,7 @@ exports.ToolRunner = class ToolRunner extends events.EventEmitter {
      * Exec a tool.
      * Output will be streamed to the live console.
      * Returns promise with return code
-     * @returns {Promise<[process: child.ChildProcess, exitCode: Promise<number>]>} number
+     * @returns {Promise<ExecPublicState>}
      */
     async exec() {
         // root the tool path if it is unrooted and contains relative pathing
@@ -585,7 +613,7 @@ exports.ToolRunner = class ToolRunner extends events.EventEmitter {
             cp.stdin.end(this.options.input);
         }
 
-        return [cp, promise];
+        return new exports.ExecPublicState(cp, promise, state);
     }
 }
 

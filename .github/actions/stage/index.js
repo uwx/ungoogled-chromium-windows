@@ -12,9 +12,13 @@ const { generateCtrlBreakAsync } = require('generate-ctrl-c-event');
 const util = require('util');
 const { glob: glob2 } = require('glob');
 
+const { extractTar, createTar } = require('./tar');
+const { ChildProcess } = require('child_process');
+
 /**
  * @typedef {'none' | 'pwsh' | 'cmd' | 'python' | 'node'} Shell
  * @typedef {import('@actions/exec').ExecOptions} ExecOptions
+ * @typedef {import('./execx').ExecPublicState} ExecPublicState
  */
 
 const delayedSymbol = Symbol('delayed');
@@ -26,13 +30,45 @@ const delayedSymbol = Symbol('delayed');
  * @returns {Promise<{ timedOut: boolean, result: T | Promise<T> }>}
  */
 async function awaitWithTimeout(promise, ms) {
-    const delay = delayCancelable(ms);
-    const result = await Promise.race([promise, delay]);
-    if (result !== delayedSymbol) {
-        delay.cancel();
+    const { promise: delayPromise, cancel: cancelDelay } = delayCancelable(ms);
+    const result = await Promise.race([promise, delayPromise]);
+    if (result !== delayedSymbol) { // did not timeout
+        cancelDelay();
         return { timedOut: false, result };
+    } else { // did timeout
+        return { timedOut: true, result: promise };
     }
-    return { timedOut: true, result: promise };
+}
+
+/**
+ * @param {ExecPublicState} proc
+ */
+async function killCleanly(proc) {
+    // Wait to see if the process closes itself
+    await delay(1000);
+    if (proc.processExited) {
+        return;
+    }
+
+    // if process is still running
+    const maxRetries = 3;
+    for (let i = 0; i < maxRetries; i++) { // attempt to send ctrl+break
+        console.log(`Sending CTRL+BREAK to process ${util.inspect(proc)} attempt ${i+1} of ${maxRetries}`);
+        await generateCtrlBreakAsync(proc.pid);
+        await delay(3000);
+
+        if (proc.processExited) {
+            return;
+        }
+    }
+
+    await awaitWithTimeout(proc.processClosedPromise, 10_000);
+    if (proc.processExited) {
+        return;
+    }
+
+    console.warn(`Killing process ${util.inspect(proc)}`);
+    proc.kill(); // kill it with fire
 }
 
 /**
@@ -50,47 +86,24 @@ async function exec(commandLine, args, options) {
     // Path to tool to execute should be first arg
     const runner = new ToolRunner(commandArgs[0], [...commandArgs.slice(1), ...(args || [])], options);
 
-    const [proc, promise] = await runner.exec();
-    proc.unref();
+    /** @type {ExecPublicState} */
+    const proc = await runner.exec();
 
     const timeout = options?.timeout;
-    if (timeout == undefined) {
-        return { timedOut: false, exitCode: await promise };
+    if (timeout == null) {
+        return { timedOut: false, exitCode: await proc.processClosedPromise };
     }
 
-    const { timedOut, result: exitCode } = await awaitWithTimeout(promise, timeout)
+    const { timedOut } = await awaitWithTimeout(proc.processClosedPromise, timeout)
     if (!timedOut) { // did not time out
-        return { timedOut: false, exitCode: await exitCode };
+        return { timedOut: false, exitCode: proc.processExitCode };
     }
 
-    // Wait to see if the process closes itself
-    await delay(1000);
-    if (proc.exitCode !== null || proc.pid === undefined) { // process did exit or we can't find the pid (so we can't kill it)
-        return { timedOut: true, exitCode: proc.exitCode ?? NaN };
-    }
+    proc.unref();
+    await killCleanly(proc);
+    return { timedOut: true, exitCode: proc.processExitCode };
 
-    // if process is still running
-    const maxRetries = 3;
-    for (let i = 0; i < maxRetries; i++) { // attempt to send ctrl+break
-        console.log(`Sending CTRL+BREAK to process ${util.inspect(proc)} attempt ${i+1} of ${maxRetries}`);
-        await generateCtrlBreakAsync(proc.pid);
-        await delay(3000);
-
-        if (proc.exitCode !== null) { // process did exit
-            return { timedOut: true, exitCode: proc.exitCode };
-        }
-    }
-
-    await awaitWithTimeout(promise, 10_000);
-    if (proc.exitCode === null) { // if process is still running AGAIN
-        console.log(`Killing process ${util.inspect(proc)}`);
-        proc.kill(); // kill it with fire
-    }
-
-    return { timedOut: true, exitCode: proc.exitCode || NaN };
 }
-
-const { extractTar, createTar } = require('./tar');
 
 /**
  * @param {number} ms
@@ -102,16 +115,14 @@ function delay(ms) {
 
 /**
  * @param {number} ms
- * @returns {Promise<typeof delayedSymbol> & { cancel: () => void }}
+ * @returns {{ promise: Promise<typeof delayedSymbol>, cancel: () => void }}
  */
 function delayCancelable(ms) {
     /** @type {(result: typeof delayedSymbol) => void} */
     let r;
     const promise = new Promise(r1 => r = r1);
     const timeout = setTimeout(() => r(delayedSymbol), ms);
-    return Object.assign(promise, {
-        cancel: () => clearTimeout(timeout)
-    });
+    return { promise, cancel: () => clearTimeout(timeout) };
 }
 
 /**
@@ -198,13 +209,6 @@ async function run() {
         });
     }
 
-    /** @type {'failed' | 'timeout' | 'success'} */
-    let outcome;
-    /** @type {(number | 'timeout')[]} */
-    let resultsPerCommand;
-    /** @type {string | undefined} */
-    let failCase;
-
     /** @type {number | undefined} */
     let endTime;
     if (key && process.env['STAGE_END_' + key]) {
@@ -227,11 +231,11 @@ async function run() {
             // NB: there are no artifacts to save here.
         }
 
-        ({ outcome, failCase } = await beforeRun({
+        const { outcome, failCase } = await beforeRun({
             cwd,
             ignoreReturnCode: true,
             failOnStdErr
-        }, shell, ignoreExitCodes));
+        }, shell, ignoreExitCodes);
 
         core.setOutput('before-run-outcome', outcome);
         if (outcome == 'failed') {
@@ -259,13 +263,13 @@ async function run() {
         return;
     }
 
-    ({ outcome, resultsPerCommand, failCase } = await run({
+    const { outcome, resultsPerCommand, failCase } = await run({
         cwd,
         ignoreReturnCode: true,
         input: input ? Buffer.from(input, inputEncoding) : undefined,
         failOnStdErr,
         timeout: calcTimeout()
-    }, shell, ignoreExitCodes));
+    }, shell, ignoreExitCodes);
 
     console.log(`Command execution completed with outcome: ${outcome} (Fail case: ${failCase})`)
 
@@ -280,11 +284,11 @@ async function run() {
         core.notice('Execution has timed out');
     } else {
         if (afterRun) { // run with no timeout
-            ({ outcome, failCase } = await afterRun({
+            const { outcome, failCase } = await afterRun({
                 cwd,
                 ignoreReturnCode: true,
                 failOnStdErr
-            }, shell, ignoreExitCodes));
+            }, shell, ignoreExitCodes);
 
             core.setOutput('after-run-outcome', outcome);
             if (outcome == 'failed') {
@@ -397,7 +401,7 @@ function getExecutor(inputName, required = false) {
                     return {
                         outcome: 'timeout',
                         resultsPerCommand,
-                        failCase: undefined
+                        failCase: timedOut ? `'exec' timed out` : `Return code was in ignore-return-codes list: ${exitCode}`
                     };
                 }
 
@@ -420,6 +424,7 @@ function getExecutor(inputName, required = false) {
                 return {
                     outcome: 'timeout',
                     resultsPerCommand,
+                    failCase: timedOut ? `'exec' timed out` : `Return code was in ignore-return-codes list: ${exitCode}`
                 };
             }
 
