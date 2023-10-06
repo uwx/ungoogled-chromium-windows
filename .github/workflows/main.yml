@@ -36,19 +36,40 @@ jobs:
   publish-release:
     needs: build-chromium
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: fixme pls
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: uwx/actions/setup-pstoolkit@main
+
       - name: Download package
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: chromium
       - name: Download x86 package
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: chromium-x86
+
+      - name: Tag published version
+        shell: pwsh
+        run: |
+          $CHROMIUM_VERSION = $((Get-Content ./ungoogled-chromium/chromium_version.txt | Out-String).Trim())
+
+          Set-GitHubActionsEnv RELEASE_TAG "$CHROMIUM_VERSION-$env:GITHUB_SHA"
+
+          git tag -a "$env:RELEASE_TAG" -m "Published version $env:RELEASE_TAG" $env:GITHUB_SHA
+          git push origin $env:RELEASE_TAG
+
       - name: Publish release
         id: publish
-        uses: softprops/action-gh-release@cd28b0f5ee8571b76cfdaa62a30d51d752317477
+        uses: softprops/action-gh-release@v1
         with:
+          tag: ${{ env.RELEASE_TAG }}
           fail_on_unmatched_files: true
           files: |
             ungoogled-chromium*

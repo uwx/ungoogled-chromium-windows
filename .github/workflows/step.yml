@@ -61,12 +61,12 @@ jobs:
           name: chromium-llvm
           path: ${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build
 
-      - if: '!inputs.local-llvm'
-        run: |
-          $CHROMIUM_VERSION = $((Get-Content ./ungoogled-chromium/chromium_version.txt | Out-String).Trim())
-          curl -s https://raw.githubusercontent.com/chromium/chromium/$CHROMIUM_VERSION/tools/clang/scripts/update.py | python3 - --output-dir=${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build\Release+Asserts
-          $CLANG_FORMAT_HASH = ((Invoke-WebRequest https://github.com/chromium/chromium/raw/$CHROMIUM_VERSION/buildtools/win/clang-format.exe.sha1).Content.Split([Environment]::NewLine) | Out-String).Trim()
-          Invoke-WebRequest -Uri https://commondatastorage.googleapis.com/chromium-clang-format/$CLANG_FORMAT_HASH -OutFile ${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build\Release+Asserts\bin\clang-format.exe
+      #- if: '!inputs.local-llvm'
+      #  run: |
+      #    $CHROMIUM_VERSION = $((Get-Content ./ungoogled-chromium/chromium_version.txt | Out-String).Trim())
+      #    #curl -s https://raw.githubusercontent.com/chromium/chromium/$CHROMIUM_VERSION/tools/clang/scripts/update.py | python3 - --output-dir=${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build\Release+Asserts
+      #    $CLANG_FORMAT_HASH = ((Invoke-WebRequest https://github.com/chromium/chromium/raw/$CHROMIUM_VERSION/buildtools/win/clang-format.exe.sha1).Content.Split([Environment]::NewLine) | Out-String).Trim()
+      #    Invoke-WebRequest -Uri https://commondatastorage.googleapis.com/chromium-clang-format/$CLANG_FORMAT_HASH -OutFile ${{ env.PROJECT_LOCATION }}\build\src\third_party\llvm-build\Release+Asserts\bin\clang-format.exe
 
       - name: Setup environment
         id: setup-environment
@@ -114,8 +114,8 @@ jobs:
         uses: ./.github/actions/stage
         with:
           tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
-          tarball-root: ${{ env.PROJECT_LOCATION }}\build
-          tarball-pattern: ${{ env.PROJECT_LOCATION }}\build\src
+          tarball-root: .\build
+          tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
           run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step build
           ignore-exit-codes: 124
