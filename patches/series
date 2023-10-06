@@ -22,5 +22,5 @@ ungoogled-chromium/windows/windows-disable-clang-version-check.patch
 ungoogled-chromium/windows/windows-disable-nodebug_assertion.patch
 ungoogled-chromium/windows/windows-fix-licenses-gn-path.patch
 ungoogled-chromium/windows/windows-fix-missing-clang-features.patch
-uwx/RobRich-win64-avx2.patch
+uwx/RobRich-win64-avx2-no-polly.patch
 uwx/RobRich-llvm-avx2-modified.patch
