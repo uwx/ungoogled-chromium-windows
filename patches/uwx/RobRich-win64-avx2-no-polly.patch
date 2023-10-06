@@ -11,6 +11,15 @@ index 9c5725c3ffbbb..57c8cc9f905d3 100644
      } else {
        cflags += [ "-ffp-contract=off" ]
      }
+@@ -711,7 +711,7 @@ config("compiler") {
+
+     # Limit the size of the ThinLTO cache to the lesser of 10% of
+     # available disk space, 40GB and 100000 files.
+-    cache_policy = "cache_size=10%:cache_size_bytes=40g:cache_size_files=100000"
++    # cache_policy = "cache_size=10%:cache_size_bytes=40g:cache_size_files=100000"
+
+     # An import limit of 30 has better performance (per speedometer) and lower
+     # binary size than the default setting of 100.
 @@ -723,10 +723,14 @@ config("compiler") {
        ldflags += [
          "/opt:lldltojobs=all",
