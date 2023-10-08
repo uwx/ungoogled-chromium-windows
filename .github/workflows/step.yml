@@ -70,7 +70,7 @@ jobs:
 
       - name: Setup environment
         id: setup-environment
-        uses: ./.github/actions/stage
+        uses: uwx/actions/multistep@main
         with:
           tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
           tarball-root: .\build
@@ -80,7 +80,7 @@ jobs:
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Download PGO profiles
-        uses: ./.github/actions/stage
+        uses: uwx/actions/multistep@main
         with:
           tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
           tarball-root: .\build
@@ -90,7 +90,7 @@ jobs:
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Create ARGS.gn
-        uses: ./.github/actions/stage
+        uses: uwx/actions/multistep@main
         with:
           tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
           tarball-root: .\build
@@ -100,7 +100,7 @@ jobs:
           key: ${{ env.TIMEOUT_KEY }}
 
       - name: Bootstrap GN
-        uses: ./.github/actions/stage
+        uses: uwx/actions/multistep@main
         with:
           tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
           tarball-root: .\build
@@ -111,7 +111,7 @@ jobs:
 
       - name: Build
         id: stage
-        uses: ./.github/actions/stage
+        uses: uwx/actions/multistep@main
         with:
           tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
           tarball-root: .\build

@@ -65,11 +65,11 @@ outputs:
   results-per-command:
     description: JSON-stringified array of exit codes ordered per command (each line in 'run'), or a 'timeout' instead of an entry if execution timed out.
   outcome:
-    description: "One of: 'failed', 'timeout', 'success'"
+    description: "One of: 'failure', 'timeout', 'success'"
   before-run-outcome:
-    description: "One of: 'failed', 'timeout', 'success', 'skipped'"
+    description: "One of: 'failure', 'timeout', 'success', 'skipped'"
   after-run-outcome:
-    description: "One of: 'failed', 'timeout', 'success', 'skipped'"
+    description: "One of: 'failure', 'timeout', 'success', 'skipped'"
 runs:
   using: node20
   main: index.js
