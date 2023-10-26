@@ -24,7 +24,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - uses: uwx/actions/setup-pstoolkit@main
+    #- uses: uwx/actions/setup-pstoolkit@main
 
     - name: Copy ungoogled-chromium stuff to C drive
       shell: pwsh
