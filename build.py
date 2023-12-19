@@ -207,6 +207,9 @@ def main():
         get_logger().error('Files could not be pruned: %s', unremovable_files)
         parser.exit(1)
 
+    subprocess.run((sys.executable, r'ungoogled-chromium\utils\patches.py', 'apply', '--patch-bin',
+                    r'build\src\third_party\git\usr\bin\patch.exe', r'build\src', r'ungoogled-chromium\patches'))
+
     # Apply patches manually
     input("Apply patch, PGO, and download LLVM.\nPress Enter to continue...")
 
