@@ -1,0 +1,46 @@
+name: Build ungoogled-chromium
+
+on:
+  workflow_call:
+    inputs:
+      x86:
+        required: false
+        default: false
+        type: boolean
+      has-stage-artifact:
+        required: false
+        default: false
+        type: boolean
+      local-llvm:
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build-1: { name: step 1, uses: ./.github/workflows/chromium_step.yml, with: { num: 1, finished: false, first: '${{ inputs.has-stage-artifact }}', x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-2: { name: step 2, needs: build-1, uses: ./.github/workflows/chromium_step.yml, with: { num: 2, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-3: { name: step 3, needs: build-2, uses: ./.github/workflows/chromium_step.yml, with: { num: 3, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-4: { name: step 4, needs: build-3, uses: ./.github/workflows/chromium_step.yml, with: { num: 4, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-5: { name: step 5, needs: build-4, uses: ./.github/workflows/chromium_step.yml, with: { num: 5, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-6: { name: step 6, needs: build-5, uses: ./.github/workflows/chromium_step.yml, with: { num: 6, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-7: { name: step 7, needs: build-6, uses: ./.github/workflows/chromium_step.yml, with: { num: 7, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-8: { name: step 8, needs: build-7, uses: ./.github/workflows/chromium_step.yml, with: { num: 8, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-9: { name: step 9, needs: build-8, uses: ./.github/workflows/chromium_step.yml, with: { num: 9, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-10: { name: step 10, needs: build-9, uses: ./.github/workflows/chromium_step.yml, with: { num: 10, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-11: { name: step 11, needs: build-10, uses: ./.github/workflows/chromium_step.yml, with: { num: 11, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-12: { name: step 12, needs: build-11, uses: ./.github/workflows/chromium_step.yml, with: { num: 12, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-13: { name: step 13, needs: build-12, uses: ./.github/workflows/chromium_step.yml, with: { num: 13, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-14: { name: step 14, needs: build-13, uses: ./.github/workflows/chromium_step.yml, with: { num: 14, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-15: { name: step 15, needs: build-14, uses: ./.github/workflows/chromium_step.yml, with: { num: 15, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-16: { name: step 15, needs: build-15, uses: ./.github/workflows/chromium_step.yml, with: { num: 16, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+
+  # If last build outputted finished=false, then the chromium build timed out
+  check-timeout:
+    needs: build-16
+    if: '!needs.build-16.outputs.finished'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Timeout build
+      run: |
+        echo "::error::ungoogled-chromium build timed out"
+        exit 1

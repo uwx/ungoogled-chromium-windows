@@ -27,7 +27,7 @@ jobs:
         x86: [true, false]
     #needs: build-llvm
     name: ${{ matrix.x86 && 'x86 build' || 'x64 build' }}
-    uses: ./.github/workflows/chromium/build.yml
+    uses: ./.github/workflows/chromium_build.yml
     with:
       x86: ${{ matrix.x86 }}
       has-stage-artifact: false #${{ needs.build-llvm.outputs.has_stage_artifact }}
@@ -63,6 +63,7 @@ jobs:
           Set-GitHubActionsEnv RELEASE_TAG "$CHROMIUM_VERSION-$env:GITHUB_SHA"
 
       - name: Create Release
+        id: publish
         # You may pin to the exact commit or the version.
         # uses: ncipollo/release-action@a2e71bdd4e7dab70ca26a852f29600c98b33153e
         uses: ncipollo/release-action@v1.12.0
@@ -90,7 +91,7 @@ jobs:
           # Indicates if the release should be the "latest" release or not.
           makeLatest: true # optional, default is legacy
           # An optional name for the release. If this is omitted the tag will be used.
-          name: LLVM ${{ matrix.llvm_version }} # optional, default is
+          name: ungoogled-chromium # optional, default is
           ## Indicates if the release body should be omitted.
           #omitBody: # optional, default is false
           ## Indicates if the release body should be omitted during updates. The body will still be applied for newly created releases. This will preserve the existing body during updates.
@@ -121,9 +122,6 @@ jobs:
           token: ${{ github.token }}
           # When allowUpdates is enabled, this will fail the action if the release it is updating is not a draft or a prerelease.
           # updateOnlyUnreleased: # optional, default is false
-
-    outputs:
-      assets: ${{ steps.publish.outputs.assets }}
 
   #publish-winget:
   #  needs: publish-release
