@@ -90,3 +90,4 @@ runs:
         variant: sccache
 
     - run: pip install httplib2
+      shell: pwsh
