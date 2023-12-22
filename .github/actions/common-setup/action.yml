@@ -88,3 +88,5 @@ runs:
         max-size: ${{ inputs.sccache-size }}
         key: sccache-${{ inputs.sccache-key }}-${{ inputs.os }}-${{ inputs.arch }}
         variant: sccache
+
+    - run: pip install httplib2
