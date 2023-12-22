@@ -7,7 +7,7 @@ const fs = require('fs/promises');
 const artifact = require('@actions/artifact');
 const glob = require('@actions/glob');
 const path = require('path/win32');
-const { ToolRunner, argStringToArray } = require('./execx');
+const { ToolRunner, argStringToArray } = require('../../../../actions/multistep/execx');
 const { generateCtrlBreakAsync } = require('generate-ctrl-c-event');
 const util = require('util');
 const { glob: glob2 } = require('glob');
@@ -18,7 +18,7 @@ const { ChildProcess } = require('child_process');
 /**
  * @typedef {'none' | 'pwsh' | 'cmd' | 'python' | 'node'} Shell
  * @typedef {import('@actions/exec').ExecOptions} ExecOptions
- * @typedef {import('./execx').ExecPublicState} ExecPublicState
+ * @typedef {import('../../../../actions/multistep/execx').ExecPublicState} ExecPublicState
  */
 
 const delayedSymbol = Symbol('delayed');
