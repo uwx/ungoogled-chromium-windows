@@ -51,7 +51,7 @@ sys.path.pop(0)
 _PATCH_BIN_RELPATH = Path('third_party/git/usr/bin/patch.exe')
 
 # patch _extraction._extract_tar_with_7z to use a shell pipeline instead of a python pipeline for performance
-def _extract_tar_with_7z_patched(binary: str, archive_path: Path, output_dir: Path, relative_to: Path):
+def _extract_tar_with_7z_patched(binary: str, archive_path: Path, output_dir: Path, relative_to: Path, skip_unused: bool):
     log.debug('Using 7-zip extractor')
     if not relative_to is None and (output_dir / relative_to).exists():
         log.error('Temporary unpacking directory already exists: %s', output_dir / relative_to)
@@ -59,6 +59,9 @@ def _extract_tar_with_7z_patched(binary: str, archive_path: Path, output_dir: Pa
     cmd = (
         binary, 'x', str(archive_path), '-so', '|', binary, 'x', '-si', '-aoa', '-ttar', f'-o{str(output_dir)}'
     )
+    if skip_unused:
+        for cpath in _extraction.CONTINGENT_PATHS:
+            cmd += ('-x!%s/%s' % (str(relative_to), cpath[:-1]), )
     log.debug('7z command line: %s', ' '.join(cmd))
 
     result = subprocess.run(cmd, shell=True)
