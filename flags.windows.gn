@@ -19,3 +19,50 @@ enable_hangout_services_extension=false
 enable_mse_mpeg2ts_stream_parser=true
 optimize_webui=true
 cc_wrapper="sccache"
+
+# new :D
+use_lld=true
+enable_media_drm_storage = true
+enable_widevine = true
+bundle_widevine_cdm = false
+ignore_missing_widevine_signing_cert = true
+use_icf = true
+is_cfi = true
+enable_ffmpeg_video_decoders = true
+enable_platform_hevc = true
+enable_hevc_parser_and_hw_decoder = true
+enable_platform_ac3_eac3_audio = true
+enable_platform_dolby_vision = true
+enable_platform_encrypted_dolby_vision = true
+enable_platform_mpeg_h_audio = true
+enable_platform_dts_audio = true
+enable_mse_mpeg2ts_stream_parser = true
+# use_text_section_splitting = true
+# init_stack_vars_zero = true
+
+# maybe unused now
+media_use_ffmpeg = true
+media_use_libvpx = true
+enable_hls_demuxer = true
+enable_ink = false
+enable_discovery = false
+enable_cros_media_app = false
+ffmpeg_branding = "Chrome"
+clang_use_chrome_plugins = true
+enable_ffmpeg_video_decoders = true
+is_component_ffmpeg = false
+use_webaudio_ffmpeg = false
+use_webaudio_pffft = true
+enable_library_cdms = true
+enable_cdm_storage_id = true
+enable_widevine_cdm_host_verification = true
+enable_rlz = true
+
+# thorium v8 shit
+# v8_symbol_level = 0
+v8_enable_fast_torque = true
+v8_enable_builtins_optimization = true
+v8_enable_maglev = true
+v8_enable_turbofan = true
+v8_enable_wasm_simd256_revec = true
+use_v8_context_snapshot = true
