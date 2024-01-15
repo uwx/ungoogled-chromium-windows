@@ -37,7 +37,7 @@ jobs:
     env:
       SEVENZ_PATH: unset fixme
       CACHE_PREFIX: ${{ matrix.os }}
-      PROJECT_LOCATION: C:\ungoogled-chromium-windows
+      PROJECT_LOCATION: C:\U
       ARCH_STRING: ${{ inputs.x86 && 'x86' || 'x64' }}
       TIMEOUT_KEY: step
     steps:
