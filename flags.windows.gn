@@ -56,6 +56,7 @@ use_webaudio_pffft = true
 enable_library_cdms = true
 enable_cdm_storage_id = true
 enable_widevine_cdm_host_verification = true
+enable_rlz = true
 
 # thorium v8 shit
 # v8_symbol_level = 0
