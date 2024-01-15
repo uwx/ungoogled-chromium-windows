@@ -60,7 +60,7 @@ index 9c5725c3ffbbb..57c8cc9f905d3 100644
      # directory from appearing in build outputs.
      "-Zremap-cwd-prefix=.",
 +
-+    "-Ctarget-cpu=znver2",
++    "-Ctarget-cpu=znver3",
    ]
 
    if (!is_win || force_rustc_color_output) {
@@ -105,7 +105,7 @@ index 9c5725c3ffbbb..57c8cc9f905d3 100644
        cflags += [
          "-m64",
 -        "-msse3",
-+        "-march=znver2 -mtune=znver2 -mcpu=znver2",
++        "-march=znver3 -mtune=znver3 -mcpu=znver3",
        ]
        ldflags += [ "-m64" ]
      } else if (current_cpu == "x86") {
