@@ -123,6 +123,7 @@ jobs:
           cwd: ${{ env.PROJECT_LOCATION }}
           run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step build
           ignore-exit-codes: 124
+          key: ${{ env.TIMEOUT_KEY }}
           timeout: 50000 # TEST REMOVE LATER
 
       - name: Package build result
