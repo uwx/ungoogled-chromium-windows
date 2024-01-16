@@ -78,9 +78,11 @@ jobs:
           cwd: ${{ env.PROJECT_LOCATION }}
           run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step setup-environment --force
           key: ${{ env.TIMEOUT_KEY }}
-          timeout: 50000 # TEST REMOVE LATER
+          # timeout: 50000 # TEST REMOVE LATER
 
       - name: Download PGO profiles
+        if: steps.setup-environment.outputs.outcome == 'success'
+        id: download-pgo
         uses: uwx/actions/multistep@main
         with:
           tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
@@ -89,9 +91,11 @@ jobs:
           cwd: ${{ env.PROJECT_LOCATION }}
           run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step download-pgo-profiles
           key: ${{ env.TIMEOUT_KEY }}
-          timeout: 50000 # TEST REMOVE LATER
+          # timeout: 50000 # TEST REMOVE LATER
 
       - name: Create ARGS.gn
+        if: steps.download-pgo.outputs.outcome == 'success'
+        id: create-args
         uses: uwx/actions/multistep@main
         with:
           tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
@@ -100,9 +104,11 @@ jobs:
           cwd: ${{ env.PROJECT_LOCATION }}
           run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step create-args-gn
           key: ${{ env.TIMEOUT_KEY }}
-          timeout: 50000 # TEST REMOVE LATER
+          # timeout: 50000 # TEST REMOVE LATER
 
       - name: Bootstrap GN
+        if: steps.create-args.outputs.outcome == 'success'
+        id: bootstrap-gn
         uses: uwx/actions/multistep@main
         with:
           tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
@@ -111,9 +117,10 @@ jobs:
           cwd: ${{ env.PROJECT_LOCATION }}
           run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step bootstrap-gn
           key: ${{ env.TIMEOUT_KEY }}
-          timeout: 50000 # TEST REMOVE LATER
+          # timeout: 50000 # TEST REMOVE LATER
 
       - name: Build
+        if: steps.bootstrap-gn.outputs.outcome == 'success'
         id: stage
         uses: uwx/actions/multistep@main
         with:
@@ -124,7 +131,7 @@ jobs:
           run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step build
           ignore-exit-codes: 124
           key: ${{ env.TIMEOUT_KEY }}
-          timeout: 50000 # TEST REMOVE LATER
+          # timeout: 50000 # TEST REMOVE LATER
 
       - name: Package build result
         if: steps.stage.outputs.outcome == 'success'
