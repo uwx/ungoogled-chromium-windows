@@ -105,8 +105,10 @@ def _process_relative_to_patched(unpack_root: Path, relative_to: Path):
                     pass
             if not success:
                 log.error(f'Failed too many times when processing relative {src_path} to {dest_dir}; ignoring (at your own risk!)')
-        src_dir.rmdir() # only removes if empty
-
+        try:
+            src_dir.rmdir() # only removes if empty
+        except OSError as err:
+            log.error(f'OSError when trying to remove {src_dir}; ignoring (at your own risk!)', exc_info=err)
     """
     For an extractor that doesn't support an automatic transform, move the extracted
     contents from the relative_to/ directory to the unpack_root
