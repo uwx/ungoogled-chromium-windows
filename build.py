@@ -89,12 +89,22 @@ def _process_relative_to_patched(unpack_root: Path, relative_to: Path):
         for src_path in src_dir.iterdir():
             dest_path = dest_dir / src_path.relative_to(src_dir)
             dest_exists = dest_path.exists()
-            if src_path.is_dir() and dest_exists:
-                _relative_recursive(src_path, dest_path) # merge into existing dir
-            else:
-                if dest_exists:
-                    dest_path.unlink() # prevent errors
-                src_path.rename(dest_path)
+            success = False
+            for attempt in range(1, 6):
+                try:
+                    if src_path.is_dir() and dest_exists:
+                        _relative_recursive(src_path, dest_path) # merge into existing dir
+                    else:
+                        if dest_exists:
+                            dest_path.unlink() # prevent errors
+                        src_path.rename(dest_path)
+                    success = True
+                    break
+                except PermissionError as err:
+                    log.warn(f'Permission error when processing relative {src_path} to {dest_dir}; attempt {attempt} of 5', exc_info=err)
+                    pass
+            if not success:
+                log.error(f'Failed too many times when processing relative {src_path} to {dest_dir}; ignoring (at your own risk!)')
         src_dir.rmdir() # only removes if empty
 
     """
