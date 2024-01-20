@@ -88,14 +88,13 @@ def _process_relative_to_patched(unpack_root: Path, relative_to: Path):
     def _relative_recursive(src_dir: Path, dest_dir: Path):
         for src_path in src_dir.iterdir():
             dest_path = dest_dir / src_path.relative_to(src_dir)
-            dest_exists = dest_path.exists()
             success = False
             for attempt in range(1, 6):
                 try:
-                    if src_path.is_dir() and dest_exists:
+                    if src_path.is_dir() and dest_path.exists():
                         _relative_recursive(src_path, dest_path) # merge into existing dir
                     else:
-                        if dest_exists:
+                        if dest_path.exists():
                             dest_path.unlink() # prevent errors
                         src_path.rename(dest_path)
                     success = True
