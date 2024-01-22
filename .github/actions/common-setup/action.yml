@@ -75,8 +75,6 @@ runs:
       with:
         path: |
           ${{ inputs.project-location }}\build\download_cache
-          ${{ inputs.project-location }}\build\src\third_party
-          !${{ inputs.project-location }}\build\src\third_party\llvm-build
         key: ${{ inputs.os }}-downloads-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
         restore-keys: |
           ${{ inputs.os }}-downloads-partial-including-extracted-${{ hashFiles('**/downloads.ini', '**/chromium_version.txt') }}
