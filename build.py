@@ -258,6 +258,7 @@ class Args(tap.TypedArgs):
     step: Step = tap.arg(help='Build step (when building in CI)', default=Step.SETUP_ENVIRONMENT)
     force: bool = tap.arg(default=False)
     skip_domsub: bool = tap.arg('--skip-domsub', default=False)
+    tarball: bool = tap.arg(default=False)
 
 def retry_on_fail(msg: str, err: type[BaseException], callback: Callable[[], None]):
     for attempt in range(1, 6):
@@ -298,16 +299,16 @@ def main(args: Args):
         downloads_cache.mkdir(parents=True, exist_ok=True)
         _make_tmp_paths()
 
-        #with group('Cloning Chromium from GitHub...'):
-        #    subprocess.run(('git', 'clone', '--recurse-submodules', '-j8', '--shallow-submodules', '--depth', '1', '--branch', get_chromium_version(), 'https://github.com/chromium/chromium', source_tree),
-        #        check=True,
-        #        encoding=ENCODING)
-
         # Get download metadata (DownloadInfo)
-        download_info = downloads.DownloadInfo([
-            _ROOT_DIR / 'downloads.ini',
-            _ROOT_DIR / 'ungoogled-chromium' / 'downloads.ini',
-        ])
+        if args.tarball:
+            download_info = downloads.DownloadInfo([
+                _ROOT_DIR / 'downloads.ini',
+                _ROOT_DIR / 'ungoogled-chromium' / 'downloads.ini',
+            ])
+        else:
+            download_info = downloads.DownloadInfo([
+                _ROOT_DIR / 'downloads.ini',
+            ])
 
         # Retrieve downloads
         with group('Downloading required files...'):
@@ -324,6 +325,11 @@ def main(args: Args):
                 error(f'File checksum does not match: {exc}')
                 exit(1)
 
+        # Prepare source folder
+        if not args.tarball:
+            # Clone sources
+            subprocess.run([sys.executable, str(Path('ungoogled-chromium', 'utils', 'clone.py')), '-o', 'build\\src', '-p', 'win32' if args.x86 else 'win64'], check=True)
+
         # Unpack downloads
         with group('Unpacking downloads...'):
             extractors = {
@@ -334,9 +340,10 @@ def main(args: Args):
 
         # Prune binaries
         with group('Prune binaries'):
+            pruning_list = (_ROOT_DIR / 'ungoogled-chromium' / 'pruning.list') if args.tarball else (_ROOT_DIR  / 'pruning.list')
             unremovable_files = prune_binaries.prune_files(
                 source_tree,
-                (_ROOT_DIR / 'ungoogled-chromium' / 'pruning.list').read_text(encoding=ENCODING).splitlines()
+                pruning_list.read_text(encoding=ENCODING).splitlines()
             )
             if unremovable_files:
                 log.error('Files could not be pruned: %s', unremovable_files)
@@ -360,14 +367,15 @@ def main(args: Args):
         if not args.skip_domsub:
             # Substitute domains
             with group('Substitute domains'):
+                domain_substitution_list = (_ROOT_DIR / 'ungoogled-chromium' / 'domain_substitution.list') if args.tarball else (_ROOT_DIR  / 'domain_substitution.list')
                 domain_substitution.apply_substitution(
                     _ROOT_DIR / 'ungoogled-chromium' / 'domain_regex.list',
-                    _ROOT_DIR / 'ungoogled-chromium' / 'domain_substitution.list',
+                    domain_substitution_list,
                     source_tree,
                     None
                 )
 
-    if not args.ci or args.step == Step.DOWNLOAD_PGO_PROFILES:
+    if not args.ci or (args.step == Step.DOWNLOAD_PGO_PROFILES and (not action.get_env('PGO_PROFILE_NAME') or args.force)):
         with group('Retrieving PGO profiles...'):
             # Retrieve PGO profiles manually (not with gclient)
             # https://chromium.googlesource.com/chromium/src/+/master/tools/update_pgo_profiles.py
