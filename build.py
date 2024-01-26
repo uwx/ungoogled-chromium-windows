@@ -354,8 +354,8 @@ def main(args: Args):
             # First, ungoogled-chromium-patches
             patches.apply_patches(
                 filter(
-                    lambda x: 'replace-google-search-engine-with-nosearch' not in x,
-                    cast(Iterable[str], patches.generate_patches_from_series(_ROOT_DIR / 'ungoogled-chromium' / 'patches', resolve=True))
+                    lambda x: 'replace-google-search-engine-with-nosearch' not in str(x),
+                    cast(Iterable[Path], patches.generate_patches_from_series(_ROOT_DIR / 'ungoogled-chromium' / 'patches', resolve=True))
                 ),
                 source_tree,
                 patch_bin_path=(source_tree / _PATCH_BIN_RELPATH)
