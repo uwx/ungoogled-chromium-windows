@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from enum import Enum, IntEnum
 import logging
 from types import SimpleNamespace
-from typing import Any, Callable, Generator, Sequence, TypedDict, Union
+from typing import Any, Callable, Generator, Iterable, Sequence, TypedDict, Union, cast
 import typing
 import github_action_utils as action
 
@@ -353,7 +353,10 @@ def main(args: Args):
         with group('Apply patches'):
             # First, ungoogled-chromium-patches
             patches.apply_patches(
-                patches.generate_patches_from_series(_ROOT_DIR / 'ungoogled-chromium' / 'patches', resolve=True),
+                filter(
+                    lambda x: 'replace-google-search-engine-with-nosearch' not in x,
+                    cast(Iterable[str], patches.generate_patches_from_series(_ROOT_DIR / 'ungoogled-chromium' / 'patches', resolve=True))
+                ),
                 source_tree,
                 patch_bin_path=(source_tree / _PATCH_BIN_RELPATH)
             )
