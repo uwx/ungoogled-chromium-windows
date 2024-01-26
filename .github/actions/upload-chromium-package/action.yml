@@ -1,5 +1,5 @@
-name: 'Upload Chromium package'
-description: 'Uploads the build result as an artifact'
+name: Upload Chromium package
+description: Uploads the build result as an artifact
 inputs:
   project-location:
     description: Project root folder
