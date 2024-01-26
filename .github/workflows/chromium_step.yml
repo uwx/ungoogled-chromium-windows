@@ -76,7 +76,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step setup-environment
+          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step setup-environment --tarball
           key: ${{ env.TIMEOUT_KEY }}
           # timeout: 50000 # TEST REMOVE LATER
 
@@ -89,7 +89,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step download-pgo-profiles
+          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step download-pgo-profiles --tarball
           key: ${{ env.TIMEOUT_KEY }}
           # timeout: 50000 # TEST REMOVE LATER
 
@@ -102,7 +102,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step create-args-gn
+          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step create-args-gn --tarball
           key: ${{ env.TIMEOUT_KEY }}
           # timeout: 50000 # TEST REMOVE LATER
 
@@ -115,7 +115,7 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step bootstrap-gn
+          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step bootstrap-gn --tarball
           key: ${{ env.TIMEOUT_KEY }}
           # timeout: 50000 # TEST REMOVE LATER
 
@@ -128,14 +128,14 @@ jobs:
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
-          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step build
+          run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step build --tarball
           ignore-exit-codes: 124
           key: ${{ env.TIMEOUT_KEY }}
           # timeout: 50000 # TEST REMOVE LATER
 
       - name: Package build result
         if: steps.stage.outputs.outcome == 'success'
-        run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step package
+        run: python -u build.py --ci --7z-path "${{steps.common-setup.outputs.sevenz-actual-path}}\7z.exe" --step package --tarball
         working-directory: ${{ env.PROJECT_LOCATION }}
 
       - name: Upload build result
