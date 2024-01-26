@@ -1,0 +1,5 @@
+name: Create chrlauncher update files
+description: Create text files to be uploaded to releases for chrlauncher's update checker
+runs:
+  using: node20
+  main: index.js

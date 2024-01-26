@@ -38,6 +38,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RELEASE_TAG: fixme pls
+      CHROMIUM_VERSION: fixme pls
+      REVISION: fixme pls
+      PACKAGING_REVISION: fixme pls
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -59,8 +62,17 @@ jobs:
         shell: pwsh
         run: |
           $CHROMIUM_VERSION = $((Get-Content ./ungoogled-chromium/chromium_version.txt | Out-String).Trim())
+          $REVISION = $((Get-Content ./ungoogled-chromium/revision.txt | Out-String).Trim())
+          $PACKAGING_REVISION = $((Get-Content ./revision.txt | Out-String).Trim())
 
-          Set-GitHubActionsEnv RELEASE_TAG "$CHROMIUM_VERSION-$env:GITHUB_SHA"
+          Set-GitHubActionsEnv CHROMIUM_VERSION "$CHROMIUM_VERSION"
+          Set-GitHubActionsEnv REVISION "$REVISION"
+          Set-GitHubActionsEnv PACKAGING_REVISION "$PACKAGING_REVISION"
+
+          Set-GitHubActionsEnv RELEASE_TAG "$CHROMIUM_VERSION-$REVISION.$PACKAGING_REVISION-$env:GITHUB_SHA-$env:GITHUB_RUN_ID"
+
+      - name: Create auto-update files
+        uses: ./.github/actions/create-chrlauncher-update-files
 
       - name: Create Release
         id: publish
@@ -73,7 +85,7 @@ jobs:
           # An optional flag which indicates if artifact read or upload errors should fail the build.
           artifactErrorsFailBuild: false # optional, default is
           # An optional set of paths representing artifacts to upload to the release. This may be a single path or a comma delimited list of paths (or globs)
-          artifacts: ungoogled-chromium*
+          artifacts: ungoogled-chromium*,chrlauncher_update_*.txt
           # The content type of the artifact. Defaults to raw
           artifactContentType: raw # optional, default is
           # An optional body for the release.
@@ -91,19 +103,7 @@ jobs:
           # Indicates if the release should be the "latest" release or not.
           makeLatest: true # optional, default is legacy
           # An optional name for the release. If this is omitted the tag will be used.
-          name: ungoogled-chromium # optional, default is
-          ## Indicates if the release body should be omitted.
-          #omitBody: # optional, default is false
-          ## Indicates if the release body should be omitted during updates. The body will still be applied for newly created releases. This will preserve the existing body during updates.
-          #omitBodyDuringUpdate: # optional, default is false
-          ## Indicates if the draft flag should be omitted during updates. The draft flag will still be applied for newly created releases. This will preserve the existing draft state during updates.
-          #omitDraftDuringUpdate: # optional, default is false
-          ## Indicates if the release name should be omitted.
-          #omitName: # optional, default is false
-          ## Indicates if the release name should be omitted during updates. The name will still be applied for newly created releases. This will preserve the existing name during updates.
-          #omitNameDuringUpdate: # optional, default is false
-          ## Indicates if the prerelease flag should be omitted during updates. The prerelease flag will still be applied for newly created releases. This will preserve the existing prerelease state during updates.
-          #omitPrereleaseDuringUpdate: # optional, default is false
+          name: ungoogled-chromium ${{ env.CHROMIUM_VERSION }}-${{env.REVISION}}.${{env.PACKAGING_REVISION}} # optional, default is
           # Optionally specify the owner of the repo where the release should be generated. Defaults to current repo's owner.
           # owner: # optional, default is
           # Optionally marks this release as prerelease. Set to true to enable.
@@ -117,7 +117,7 @@ jobs:
           # When skipIfReleaseExists is enabled the action will be skipped if a non-draft release already exists for the provided tag.
           # skipIfReleaseExists: true # optional, default is false
           # An optional tag for the release. If this is omitted the git ref will be used (if it is a tag).
-          tag: ${{ env.RELEASE_TAG }}-${{ github.run_id }} # optional, default is
+          tag: ${{ env.RELEASE_TAG }} # optional, default is
           # The Github token.
           token: ${{ github.token }}
           # When allowUpdates is enabled, this will fail the action if the release it is updating is not a draft or a prerelease.
