@@ -30,7 +30,7 @@ index de1cd6efc67b4..69098a74505da 100644
        cflags += [
          "-m64",
 -        "-msse3",
-+        "-mtune=znver3", "-mtune=znver3", "-mcpu=znver3",
++        "-mtune=znver3", "-march=znver3", "-mcpu=znver3",
 +        "-msse3", "-mssse3","-msse4.1", "-msse4.2",
 +        "-mavx", "-mavx2", "-mfma", "-mf16c",
        ]
