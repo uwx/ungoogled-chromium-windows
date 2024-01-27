@@ -25,4 +25,5 @@ ungoogled-chromium/windows/windows-fix-missing-clang-features.patch
 ungoogled-chromium/windows/windows-fix-building-without-rust.patch
 uwx/RobRich-win64-avx2-no-polly.patch
 uwx/RobRich-llvm-avx2-modified.patch
-uwx/skia-do-not-build-avx512-try-2.patch
+uwx/skia-do-not-build-avx512.patch
+uwx/skia-do-not-build-avx512-source-patch.patch
