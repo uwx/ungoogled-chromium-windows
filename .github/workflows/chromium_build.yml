@@ -38,10 +38,30 @@ jobs:
   build-19: { name: step 19, needs: build-18, uses: ./.github/workflows/chromium_step.yml, with: { num: 19, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
   build-20: { name: step 20, needs: build-19, uses: ./.github/workflows/chromium_step.yml, with: { num: 20, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
   build-21: { name: step 21, needs: build-20, uses: ./.github/workflows/chromium_step.yml, with: { num: 21, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-22: { name: step 22, needs: build-21, uses: ./.github/workflows/chromium_step.yml, with: { num: 22, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-23: { name: step 23, needs: build-22, uses: ./.github/workflows/chromium_step.yml, with: { num: 23, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-24: { name: step 24, needs: build-23, uses: ./.github/workflows/chromium_step.yml, with: { num: 24, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-25: { name: step 25, needs: build-24, uses: ./.github/workflows/chromium_step.yml, with: { num: 25, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-26: { name: step 26, needs: build-25, uses: ./.github/workflows/chromium_step.yml, with: { num: 26, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-27: { name: step 27, needs: build-26, uses: ./.github/workflows/chromium_step.yml, with: { num: 27, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-28: { name: step 28, needs: build-27, uses: ./.github/workflows/chromium_step.yml, with: { num: 28, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-29: { name: step 29, needs: build-28, uses: ./.github/workflows/chromium_step.yml, with: { num: 29, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-30: { name: step 30, needs: build-29, uses: ./.github/workflows/chromium_step.yml, with: { num: 30, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-31: { name: step 31, needs: build-30, uses: ./.github/workflows/chromium_step.yml, with: { num: 31, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-32: { name: step 32, needs: build-31, uses: ./.github/workflows/chromium_step.yml, with: { num: 32, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-33: { name: step 33, needs: build-32, uses: ./.github/workflows/chromium_step.yml, with: { num: 33, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-34: { name: step 34, needs: build-33, uses: ./.github/workflows/chromium_step.yml, with: { num: 34, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-35: { name: step 35, needs: build-34, uses: ./.github/workflows/chromium_step.yml, with: { num: 35, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-36: { name: step 36, needs: build-35, uses: ./.github/workflows/chromium_step.yml, with: { num: 36, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-37: { name: step 37, needs: build-36, uses: ./.github/workflows/chromium_step.yml, with: { num: 37, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-38: { name: step 38, needs: build-37, uses: ./.github/workflows/chromium_step.yml, with: { num: 38, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-39: { name: step 39, needs: build-38, uses: ./.github/workflows/chromium_step.yml, with: { num: 39, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-40: { name: step 40, needs: build-39, uses: ./.github/workflows/chromium_step.yml, with: { num: 40, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
+  build-41: { name: step 41, needs: build-40, uses: ./.github/workflows/chromium_step.yml, with: { num: 41, finished: "${{ join(needs.*.outputs.finished) == 'true' }}", x86: '${{ inputs.x86 }}', local-llvm: '${{ inputs.local-llvm }}' } }
 
   # If last build outputted finished=false, then the chromium build timed out
   check-timeout:
-    needs: build-21
+    needs: build-41
     if: '!needs.build-16.outputs.finished'
     runs-on: ubuntu-latest
     steps:
