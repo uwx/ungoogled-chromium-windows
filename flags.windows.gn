@@ -1,4 +1,4 @@
-thin_lto_enable_cache = false
+# thin_lto_enable_cache = false
 enable_media_drm_storage = true
 enable_widevine = true
 bundle_widevine_cdm = false
