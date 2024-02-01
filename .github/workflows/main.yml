@@ -11,7 +11,7 @@ on:
     types: [updated-from-upstream]
 
 concurrency:
-  group: ${{ github.workflow }}-llvm-enabled-build-pgoless
+  group: ${{ github.workflow }}-llvm-enabled-build-pgoless-2
   cancel-in-progress: true
 
 permissions:
