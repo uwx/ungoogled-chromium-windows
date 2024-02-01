@@ -13,7 +13,8 @@ jobs:
     steps:
       - name: Get commit SHA before merging
         id: ref-before
-        run: echo "ref=$((git rev-parse HEAD).Trim())" >> $GITHUB_OUTPUT
+        run: echo "ref=$((git rev-parse HEAD).Trim())" >> $env:GITHUB_OUTPUT
+        shell: pwsh
       - name: Checkout
         uses: actions/checkout@v2
         with:
@@ -29,7 +30,8 @@ jobs:
           branch: master          # set the branch to merge to
       - name: Get commit SHA after merging
         id: ref-after
-        run: echo "ref=$((git rev-parse HEAD).Trim())" >> $GITHUB_OUTPUT
+        run: echo "ref=$((git rev-parse HEAD).Trim())" >> $env:GITHUB_OUTPUT
+        shell: pwsh
       - name: Trigger new build workflow
         if: steps.ref-before.outputs.ref != steps.ref-after.outputs.ref
         uses: peter-evans/repository-dispatch@v2.1.2
