@@ -15,7 +15,7 @@ on:
         default: false
         type: boolean
       num:
-        required: false
+        required: true
         default: -1
         type: number
       local-llvm:
@@ -40,6 +40,7 @@ jobs:
       PROJECT_LOCATION: C:\U
       ARCH_STRING: ${{ inputs.x86 && 'x86' || 'x64' }}
       TIMEOUT_KEY: step
+      PREVIOUS_NUM: -6969fixme
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -53,6 +54,10 @@ jobs:
           os: ${{ matrix.os }}
           arch: ${{ env.ARCH_STRING }}
           project-location: ${{ env.PROJECT_LOCATION }}
+
+      - run: |
+          echo "PREVIOUS_NUM=$(${{ inputs.num }} - 1) | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        shell: pwsh
 
       - if: 'inputs.local-llvm'
         name: Download previously compiled LLVM
@@ -72,7 +77,8 @@ jobs:
         id: setup-environment
         uses: uwx/actions/multistep@main
         with:
-          tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
+          tarball-input-artifact-name: build-artifact-${{ env.ARCH_STRING }}-${{ env.PREVIOUS_NUM }}
+          tarball-output-artifact-name: build-artifact-${{ env.ARCH_STRING }}-${{ inputs.num }}
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
@@ -85,7 +91,8 @@ jobs:
         id: download-pgo
         uses: uwx/actions/multistep@main
         with:
-          tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
+          tarball-input-artifact-name: build-artifact-${{ env.ARCH_STRING }}-${{ env.PREVIOUS_NUM }}
+          tarball-output-artifact-name: build-artifact-${{ env.ARCH_STRING }}-${{ inputs.num }}
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
@@ -98,7 +105,8 @@ jobs:
         id: create-args
         uses: uwx/actions/multistep@main
         with:
-          tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
+          tarball-input-artifact-name: build-artifact-${{ env.ARCH_STRING }}-${{ env.PREVIOUS_NUM }}
+          tarball-output-artifact-name: build-artifact-${{ env.ARCH_STRING }}-${{ inputs.num }}
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
@@ -111,7 +119,8 @@ jobs:
         id: bootstrap-gn
         uses: uwx/actions/multistep@main
         with:
-          tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
+          tarball-input-artifact-name: build-artifact-${{ env.ARCH_STRING }}-${{ env.PREVIOUS_NUM }}
+          tarball-output-artifact-name: build-artifact-${{ env.ARCH_STRING }}-${{ inputs.num }}
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
@@ -124,7 +133,8 @@ jobs:
         id: stage
         uses: uwx/actions/multistep@main
         with:
-          tarball-artifact-name: build-artifact-${{ env.ARCH_STRING }}
+          tarball-input-artifact-name: build-artifact-${{ env.ARCH_STRING }}-${{ env.PREVIOUS_NUM }}
+          tarball-output-artifact-name: build-artifact-${{ env.ARCH_STRING }}-${{ inputs.num }}
           tarball-root: .\build
           tarball-pattern: .\build\src
           cwd: ${{ env.PROJECT_LOCATION }}
