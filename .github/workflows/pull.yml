@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Get commit SHA before merging
         id: ref-before
-        run: echo "ref=$((git rev-parse HEAD).Trim())" >> $env:GITHUB_OUTPUT
+        run: echo "ref=$((git rev-parse --short "$env:GITHUB_SHA").Trim())" >> $env:GITHUB_OUTPUT
         shell: pwsh
       - name: Checkout
         uses: actions/checkout@v2
