@@ -1,6 +1,6 @@
 --- a/chrome/browser/browsing_data/chrome_browsing_data_lifetime_manager.cc
 +++ b/chrome/browser/browsing_data/chrome_browsing_data_lifetime_manager.cc
-@@ -170,11 +170,9 @@ uint64_t AllOriginTypeMask() {
+@@ -156,11 +156,9 @@ uint64_t AllOriginTypeMask() {
  uint64_t AllRemoveMask() {
    return content::BrowsingDataRemover::DATA_TYPE_CACHE |
           content::BrowsingDataRemover::DATA_TYPE_DOWNLOADS |
