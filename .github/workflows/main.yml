@@ -10,10 +10,6 @@ on:
   repository_dispatch:
     types: [updated-from-upstream]
 
-concurrency:
-  group: ${{ github.workflow }}-llvm-enabled-build-pgoless-artifacts-v2-2
-  cancel-in-progress: true
-
 permissions:
   contents: write # to be able to create releases
 
@@ -21,11 +17,45 @@ jobs:
   #build-llvm:
   #  uses: ./.github/workflows/build_llvm.yml
 
+  pre-build-chromium:
+    runs-on: ubuntu-latest
+    env:
+      CHROMIUM_VERSION: fixme unset
+      REVISION: fixme unset
+      PACKAGING_REVISION: fixme unset
+      RELEASE_TAG: fixme unset
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - shell: pwsh
+        run: |
+          $CHROMIUM_VERSION = $((Get-Content ./ungoogled-chromium/chromium_version.txt | Out-String).Trim())
+          $REVISION = $((Get-Content ./ungoogled-chromium/revision.txt | Out-String).Trim())
+          $PACKAGING_REVISION = $((Get-Content ./revision.txt | Out-String).Trim())
+
+          Set-GitHubActionsEnv CHROMIUM_VERSION "$CHROMIUM_VERSION"
+          Set-GitHubActionsEnv REVISION "$REVISION"
+          Set-GitHubActionsEnv PACKAGING_REVISION "$PACKAGING_REVISION"
+
+          Set-GitHubActionsEnv RELEASE_TAG "$CHROMIUM_VERSION-$REVISION.$PACKAGING_REVISION-$env:GITHUB_SHA-$env:GITHUB_RUN_ID"
+
+    outputs:
+      chromium-version: ${{ env.CHROMIUM_VERSION }}
+      revision: ${{ env.REVISION }}
+      packaging-revision: ${{ env.PACKAGING_REVISION }}
+      release-tag: ${{ env.RELEASE_TAG }}
+
   build-chromium:
+    concurrency:
+      group: ${{ github.workflow }}-${{ matrix.x86 }}-${{ needs.pre-build-chromium.outputs.release-tag }}
+      cancel-in-progress: true
+
     strategy:
       matrix:
         x86: [true, false]
-    #needs: build-llvm
+    needs: pre-build-chromium # build-llvm
     name: ${{ matrix.x86 && 'x86 build' || 'x64 build' }}
     uses: ./.github/workflows/chromium_build.yml
     with:
