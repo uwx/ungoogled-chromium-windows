@@ -29,27 +29,26 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      - shell: pwsh
+      - id: results
+        shell: pwsh
         run: |
           $CHROMIUM_VERSION = $((Get-Content ./ungoogled-chromium/chromium_version.txt | Out-String).Trim())
           $REVISION = $((Get-Content ./ungoogled-chromium/revision.txt | Out-String).Trim())
           $PACKAGING_REVISION = $((Get-Content ./revision.txt | Out-String).Trim())
 
-          echo "CHROMIUM_VERSION=$CHROMIUM_VERSION" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "REVISION=$REVISION" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "PACKAGING_REVISION=$PACKAGING_REVISION" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-          echo "RELEASE_TAG=$CHROMIUM_VERSION-$REVISION.$PACKAGING_REVISION-$env:GITHUB_SHA-$env:GITHUB_RUN_ID" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
+          echo "chromium-version=$CHROMIUM_VERSION" >> $env:GITHUB_OUTPUT
+          echo "revision=$REVISION" >> $env:GITHUB_OUTPUT
+          echo "packaging-revision=$PACKAGING_REVISION" >> $env:GITHUB_OUTPUT
+          echo "release-tag=$CHROMIUM_VERSION-$REVISION.$PACKAGING_REVISION-$env:GITHUB_SHA-$env:GITHUB_RUN_ID" >> $env:GITHUB_OUTPUT
     outputs:
-      chromium-version: ${{ env.CHROMIUM_VERSION }}
-      revision: ${{ env.REVISION }}
-      packaging-revision: ${{ env.PACKAGING_REVISION }}
-      release-tag: ${{ env.RELEASE_TAG }}
+      chromium-version: ${{ steps.results.outputs.chromium-version }}
+      revision: ${{ steps.results.outputs.revision }}
+      packaging-revision: ${{ steps.results.outputs.packaging-revision }}
+      release-tag: ${{ steps.results.outputs.release-tag }}
 
   build-chromium:
     concurrency:
-      group: ${{ github.workflow }}-${{ matrix.x86 }}-${{ needs.pre-build-chromium.outputs.release-tag }}
+      group: ${{ github.workflow }}-${{ matrix.x86 }}-${{ needs.pre-build-chromium.outputs.chromium-version }}-${{ needs.pre-build-chromium.outputs.revision }}-${{ needs.pre-build-chromium.outputs.packaging-revision }}-${{ github.sha }}
       cancel-in-progress: true
 
     strategy:
