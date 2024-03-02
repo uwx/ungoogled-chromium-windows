@@ -44,4 +44,4 @@ thin_lto_enable_optimizations=true
 enable_hangout_services_extension=false
 enable_mse_mpeg2ts_stream_parser=true
 optimize_webui=true
-cc_wrapper="sccache"
+# cc_wrapper="sccache"
