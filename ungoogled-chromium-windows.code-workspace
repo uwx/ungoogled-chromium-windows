@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../actions"
+		}
+	],
+	"settings": {
+		"yaml.schemas": {
+			"https://json.schemastore.org/github-workflow.json": [
+				"file:///e%3A/TempStuff/ungoogled-chromium-windows/.github/workflows/step.yml",
+				"file:///e%3A/TempStuff/ungoogled-chromium-windows/.github/workflows/chromium/step.yml"
+			]
+		}
+	}
+}
