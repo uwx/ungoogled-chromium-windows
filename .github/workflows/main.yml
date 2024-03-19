@@ -721,11 +721,11 @@ jobs:
       - name: Download package
         uses: actions/download-artifact@v3
         with:
-          name: chromium
+          name: build-artifact
       - name: Download x86 package
         uses: actions/download-artifact@v3
         with:
-          name: chromium-x86
+          name: build-artifact-x86
 
       - name: Tag published version
         shell: pwsh
