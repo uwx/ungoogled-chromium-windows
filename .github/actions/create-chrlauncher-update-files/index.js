@@ -40,6 +40,6 @@ const tags = {
 };
 
 for (const [id, tag] of Object.entries(tags)) {
-    const text = Object.entries(tag).map((k, v) => `${k}=${v}`).join(';') + '\n';
+    const text = Object.entries(tag).map(([k, v]) => `${k}=${v}`).join(';') + '\n';
     fs.writeFileSync(`./chrlauncher_update_${id}.txt`, text);
 }
