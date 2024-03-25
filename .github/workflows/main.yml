@@ -776,7 +776,7 @@ jobs:
           # Optionally specify the owner of the repo where the release should be generated. Defaults to current repo's owner.
           # owner: # optional, default is
           # Optionally marks this release as prerelease. Set to true to enable.
-          prerelease: true # optional, default is
+          prerelease: false # optional, default is
           # Indicates if existing release artifacts should be removed, Defaults to false.
           removeArtifacts: false # optional, default is false
           # Indicates if existing release artifacts should be replaced. Defaults to true.
