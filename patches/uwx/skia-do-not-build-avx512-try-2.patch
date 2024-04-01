@@ -1,0 +1,13 @@
+diff --git a/skia/BUILD.gn b/skia/BUILD.gn
+index 60ab6ca905cc7..6c37d4f7514b9 100644
+--- a/skia/BUILD.gn
++++ b/skia/BUILD.gn
+@@ -804,7 +804,7 @@ if (current_cpu == "x64") {
+         "-std=c11",
+       ]
+     } else {
+-      cflags = [ "/arch:AVX512" ]
++      cflags = [ "/arch:AVX512", "-w", "-mavx512f", "-mavx512dq", "-mavx512cd", "-mavx512bw", "-mavx512vl", "-std=c11" ]
+     }
+     visibility = [ ":skcms" ]
+   }

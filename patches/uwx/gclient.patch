@@ -1,0 +1,12 @@
+diff --git a/utils/clone.py b/utils/clone.py
+index fef11011..8f0a56ac 100755
+--- a/utils/clone.py
++++ b/utils/clone.py
+@@ -33,6 +33,7 @@ solutions = [
+     },
+     "custom_vars": {
+       "checkout_configuration": "small",
++      "checkout_pgo_profiles": True,
+     },
+   },
+ ];
