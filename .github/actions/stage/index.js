@@ -22,7 +22,7 @@ async function run() {
     if (from_artifact) {
         await artifactClient.downloadArtifact(artifactName, 'C:\\ungoogled-chromium-windows\\build');
         await exec.exec('7z', ['x', 'C:\\ungoogled-chromium-windows\\build\\artifacts.zip',
-            '-oC:\\ungoogled-chromium-windows\\build', '-y']);
+            '-oC:\\ungoogled-chromium-windows\\build\\src', '-y']);
         await io.rmRF('C:\\ungoogled-chromium-windows\\build\\artifacts.zip');
     }
 
@@ -64,7 +64,7 @@ async function run() {
     } else {
         await new Promise(r => setTimeout(r, 5000));
         await exec.exec('7z', ['a', '-tzip', 'C:\\ungoogled-chromium-windows\\artifacts.zip',
-            'C:\\ungoogled-chromium-windows\\build\\src', '-mx=3', '-mtc=on'], {ignoreReturnCode: true});
+            'C:\\ungoogled-chromium-windows\\build\\src\\*', '-mx=3', '-mtc=on'], {ignoreReturnCode: true});
         for (let i = 0; i < 5; ++i) {
             try {
                 await artifactClient.uploadArtifact(artifactName, ['C:\\ungoogled-chromium-windows\\artifacts.zip'],
