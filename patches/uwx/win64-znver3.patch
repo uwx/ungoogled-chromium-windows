@@ -1,0 +1,258 @@
+diff --git a/build/config/compiler/BUILD.gn b/build/config/compiler/BUILD.gn
+index f598fd188a4ce..4bdaf882e3baf 100644
+--- a/build/config/compiler/BUILD.gn
++++ b/build/config/compiler/BUILD.gn
+@@ -478,10 +478,17 @@ config("compiler") {
+   # Linux/Android/Fuchsia common flags setup.
+   # ---------------------------------
+   if (is_linux || is_chromeos || is_android || is_fuchsia) {
+-    asmflags += [ "-fPIC" ]
+-    cflags += [ "-fPIC" ]
+-    ldflags += [ "-fPIC" ]
+-    rustflags += [ "-Crelocation-model=pic" ]
++    asmflags += [ "-fPIC", "-fno-emulated-tls", "-w", ]
++    cflags += [ "-fPIC","-fno-emulated-tls", "-w", ]
++    ldflags += [ "-fPIC", "-Wl,-plugin-opt=-emulated-tls=0", "-w", ]
++    # ldflags += [ "-Wl,--symbol-ordering-file=../../chrome/build/pgo_profiles/linux-order.txt", ]
++    rustflags += [ "-Crelocation-model=pic", "-Awarnings", ]
++
++    if (is_clang && chrome_pgo_phase == 2) {
++      asmflags += [ "-fbasic-block-sections=labels" ]
++      cflags += [ "-fbasic-block-sections=labels" ]
++      rustflags += [ "-Cllvm-args=-basic-block-sections=labels" ]
++    }
+
+     if (!is_clang) {
+       # Use pipes for communicating between sub-processes. Faster.
+@@ -529,7 +536,7 @@ config("compiler") {
+     if (is_win) {
+       cflags += [ "/Zc:sizedDealloc-" ]
+     } else {
+-      cflags += [ "-fno-sized-deallocation" ]
++      cflags += [ "-fsized-deallocation" ]
+     }
+   }
+
+@@ -581,14 +588,14 @@ config("compiler") {
+     if (default_toolchain != "//build/toolchain/cros:target" &&
+         !llvm_android_mainline) {
+       cflags += [
+-        "-mllvm",
+-        "-split-threshold-for-reg-with-hint=0",
++        # "-mllvm",
++        # "-split-threshold-for-reg-with-hint=0",
+       ]
+       if (use_thin_lto && is_a_target_toolchain) {
+         if (is_win) {
+           ldflags += [ "-mllvm:-split-threshold-for-reg-with-hint=0" ]
+         } else {
+-          ldflags += [ "-Wl,-mllvm,-split-threshold-for-reg-with-hint=0" ]
++          # ldflags += [ "-Wl,-mllvm,-split-threshold-for-reg-with-hint=0" ]
+         }
+       }
+     }
+@@ -597,7 +604,7 @@ config("compiler") {
+     if (is_win) {
+       cflags += [ "/clang:-ffp-contract=off" ]
+     } else {
+-      cflags += [ "-ffp-contract=off" ]
++      cflags += [ "-ffp-contract=fast" ]
+     }
+   }
+
+@@ -750,7 +757,7 @@ config("compiler") {
+     # [0]: https://pinpoint-dot-chromeperf.appspot.com/job/16984a18be0000
+     # [1]: https://pinpoint-dot-chromeperf.appspot.com/job/11984a18be0000
+     # [2]: https://ci.chromium.org/ui/p/chromium/builders/try/android-binary-size/1848442
+-    import_instr_limit = 30
++    import_instr_limit = 100
+
+     if (is_win) {
+       ldflags += [
+@@ -760,6 +767,7 @@ config("compiler") {
+       ]
+     } else {
+       ldflags += [ "-flto=thin" ]
++      # ldflags += [ "-Wl,-mllvm,-polly" ]
+
+       # Enabling ThinLTO on Chrome OS too, in an effort to reduce the memory
+       # usage in crbug.com/1038040. Note this will increase build time in
+@@ -1021,6 +1029,10 @@ config("compiler") {
+     # For deterministic builds, keep the local machine's current working
+     # directory from appearing in build outputs.
+     "-Zremap-cwd-prefix=.",
++
++    "-Ztune-cpu=znver3",
++    "-Ctarget-feature=+sse3,+ssse3,+sse4.1,+sse4.2,+avx,+avx2,+fma,+f16c",
++    "-Cllvm-args=-fp-contract=fast",
+   ]
+
+   if (!is_win || force_rustc_color_output) {
+@@ -1096,12 +1108,13 @@ config("compiler") {
+ # building with ThinLTO, no optimization is performed in the link step.
+ config("thinlto_optimize_default") {
+   if (!is_debug && use_thin_lto && is_a_target_toolchain) {
+-    lto_opt_level = 0
++    lto_opt_level = 3
+
+     if (is_win) {
+       ldflags = [ "/opt:lldlto=" + lto_opt_level ]
+     } else {
+       ldflags = [ "-Wl,--lto-O" + lto_opt_level ]
++      ldflags += [ "-Wl,--lto-CGO" + lto_opt_level ]
+     }
+
+     if (toolchain_supports_rust_thin_lto) {
+@@ -1127,25 +1140,28 @@ config("thinlto_optimize_default") {
+ config("thinlto_optimize_max") {
+   if (!is_debug && use_thin_lto && is_a_target_toolchain) {
+     if (thin_lto_enable_optimizations) {
+-      lto_opt_level = 2
++      lto_opt_level = 3
+     } else {
+-      lto_opt_level = 0
++      lto_opt_level = 3
+     }
+
+     if (is_win) {
+       ldflags = [ "/opt:lldlto=" + lto_opt_level ]
+     } else {
+       ldflags = [ "-Wl,--lto-O" + lto_opt_level ]
++      ldflags += [ "-Wl,--lto-CGO" + lto_opt_level ]
++      cflags = [ "-march=znver3" ]
++      rustflags = [ "-Ctarget-cpu=znver3" ]
+     }
+
+     if (toolchain_supports_rust_thin_lto) {
+       # We always point Rust to a linker that performs LTO, so we don't want Rust
+       # to preemptively do so during compilation too or they conflict. But we do
+       # want Rust to generate LTO metadata in order for the linker to do its job.
+-      rustflags = [ "-Clinker-plugin-lto=yes" ]
++      rustflags += [ "-Clinker-plugin-lto=yes" ]
+     } else {
+       # Don't include bitcode if it won't be used.
+-      rustflags = [ "-Cembed-bitcode=no" ]
++      rustflags += [ "-Cembed-bitcode=no" ]
+     }
+   }
+ }
+@@ -1171,7 +1187,9 @@ config("compiler_cpu_abi") {
+     if (current_cpu == "x64") {
+       cflags += [
+         "-m64",
+-        "-msse3",
++        "-mtune=znver3",
++        "-msse3", "-mssse3","-msse4.1", "-msse4.2",
++        "-mavx", "-mavx2", "-mfma", "-mf16c",
+       ]
+
+       # Minimum SIMD support for devices running lacros.
+@@ -2360,11 +2378,13 @@ if (is_win) {
+       # can be removed at link time with --gc-sections.
+       "-fdata-sections",
+       "-ffunction-sections",
++      "-funique-section-names",
++      "-fseparate-named-sections",
+     ]
+     if ((!is_nacl || is_nacl_saigo) && is_clang) {
+       # We don't care about unique section names, this makes object files a bit
+       # smaller.
+-      common_optimize_on_cflags += [ "-fno-unique-section-names" ]
++      # common_optimize_on_cflags += [ "-fno-unique-section-names" ]
+     }
+
+     if (is_official_build) {
+@@ -2459,7 +2479,7 @@ config("optimize") {
+     # vectorization while otherwise optimizing for size.
+     rustflags = [ "-Copt-level=s" ]
+   } else {
+-    cflags = [ "-O2" ] + common_optimize_on_cflags
++    cflags = [ "-O3" ] + common_optimize_on_cflags
+
+     # The `-O3` for clang turns on extra optimizations compared to the standard
+     # `-O2`. But for rust, `-Copt-level=3` is the default and is thus reliable
+@@ -2530,7 +2550,7 @@ config("optimize_max") {
+     } else if (optimize_for_fuzzing) {
+       cflags = [ "-O1" ] + common_optimize_on_cflags
+     } else {
+-      cflags = [ "-O2" ] + common_optimize_on_cflags
++      cflags = [ "-O3" ] + common_optimize_on_cflags
+     }
+     rustflags = [ "-Copt-level=3" ]
+   }
+diff --git a/build/config/compiler/pgo/BUILD.gn b/build/config/compiler/pgo/BUILD.gn
+index afa4aa28da9d3..7b1a7d0e66255 100644
+--- a/build/config/compiler/pgo/BUILD.gn
++++ b/build/config/compiler/pgo/BUILD.gn
+@@ -151,12 +151,15 @@ config("pgo_optimization_flags") {
+       if (is_win) {
+         ldflags = [ "-mllvm:-enable-ext-tsp-block-placement=1" ]
+       } else {
+-        ldflags = [ "-Wl,-mllvm,-enable-ext-tsp-block-placement=1" ]
++        ldflags = [
++          "-Wl,-mllvm,-enable-ext-tsp-block-placement",
++          "-Wl,-mllvm,-enable-split-machine-functions",
++        ]
+       }
+     } else {
+       cflags += [
+-        "-mllvm",
+-        "-enable-ext-tsp-block-placement=1",
++        "-mllvm", "-enable-ext-tsp-block-placement",
++        "-fsplit-machine-functions",
+       ]
+     }
+   }
+diff --git a/build/config/win/BUILD.gn b/build/config/win/BUILD.gn
+index 9ecf8abdcd4cc..7070b0799e650 100644
+--- a/build/config/win/BUILD.gn
++++ b/build/config/win/BUILD.gn
+@@ -85,7 +85,7 @@ config("compiler") {
+
+   cflags += [
+     # Work around crbug.com/526851, bug in VS 2015 RTM compiler.
+-    "/Zc:sizedDealloc-",
++    "/Zc:sizedDealloc",
+   ]
+
+   if (is_clang) {
+@@ -126,7 +126,7 @@ config("compiler") {
+     # microarchitecture. MSVC only supports a subset of architectures, and the
+     # next step after SSE2 will be AVX.
+     if (current_cpu == "x86" || current_cpu == "x64") {
+-      cflags += [ "-msse3" ]
++      cflags += [ "-mtune=znver3", "-msse3", "-mssse3","-msse4.1", "-msse4.2", "-mavx", "-mavx2", "-mfma", "-mf16c", "-mlzcnt", "-mbmi2", "/clang:-w", ]
+     }
+
+     # Enable ANSI escape codes if something emulating them is around (cmd.exe
+@@ -197,7 +197,7 @@ config("compiler") {
+     if (use_lld) {
+       # String tail merging leads to smaller binaries, but they don't compress
+       # as well, leading to increased mini_installer size (crbug.com/838449).
+-      ldflags += [ "/OPT:NOLLDTAILMERGE" ]
++      ldflags += [ "/OPT:LLDTAILMERGE" ]
+     }
+
+     # TODO(siggi): Is this of any use anymore?
+@@ -205,7 +205,7 @@ config("compiler") {
+     # PDB file by about 5%) but does not otherwise alter the output binary. It
+     # is enabled opportunistically for builds where it is not prohibited (not
+     # supported when incrementally linking, or using /debug:fastlink).
+-    ldflags += [ "/PROFILE" ]
++    # ldflags += [ "/PROFILE" ]
+   }
+
+   # arflags apply only to static_libraries. The normal linker configs are only
+diff --git a/tools/cfi/ignores.txt b/tools/cfi/ignores.txt
+index 8cb5c3679b7fe..855a55fb9a471 100644
+--- a/tools/cfi/ignores.txt
++++ b/tools/cfi/ignores.txt
+@@ -147,6 +147,8 @@ type:sandbox::TargetServices
+
+ [cfi-icall]
+
++fun:ft_size_reset_iterator
++
+ ######### Cross-DSO icalls using dynamically resolved symbols crbug.com/771365
+
+ # ANGLE

@@ -23,5 +23,5 @@ ungoogled-chromium/windows/windows-fix-licenses-gn-path.patch
 ungoogled-chromium/windows/windows-fix-building-with-rust.patch
 ungoogled-chromium/windows/windows-fix-remove-unused-preferences-fields.patch
 ungoogled-chromium/windows/windows-fix-missing-includes.patch
-uwx/RobRich-win64-avx2-no-polly.patch
+uwx/win64-znver3.patch
 uwx/skia-do-not-build-avx512-try-2.patch
