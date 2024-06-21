@@ -24,15 +24,6 @@ index f598fd188a4ce..4bdaf882e3baf 100644
 
      if (!is_clang) {
        # Use pipes for communicating between sub-processes. Faster.
-@@ -529,7 +536,7 @@ config("compiler") {
-     if (is_win) {
-       cflags += [ "/Zc:sizedDealloc-" ]
-     } else {
--      cflags += [ "-fno-sized-deallocation" ]
-+      cflags += [ "-fsized-deallocation" ]
-     }
-   }
-
 @@ -581,14 +588,14 @@ config("compiler") {
      if (default_toolchain != "//build/toolchain/cros:target" &&
          !llvm_android_mainline) {
