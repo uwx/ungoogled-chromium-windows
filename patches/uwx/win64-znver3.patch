@@ -94,7 +94,7 @@ index f598fd188a4ce..4bdaf882e3baf 100644
      }
 
      if (toolchain_supports_rust_thin_lto) {
-@@ -1127,25 +1140,28 @@ config("thinlto_optimize_default") {
+@@ -1127,25 +1140,31 @@ config("thinlto_optimize_default") {
  config("thinlto_optimize_max") {
    if (!is_debug && use_thin_lto && is_a_target_toolchain) {
      if (thin_lto_enable_optimizations) {
@@ -107,6 +107,9 @@ index f598fd188a4ce..4bdaf882e3baf 100644
 
      if (is_win) {
        ldflags = [ "/opt:lldlto=" + lto_opt_level ]
++      ldflags += [ "-Wl,--lto-CGO" + lto_opt_level ]
++      cflags = [ "-march=znver3" ]
++      rustflags = [ "-Ctarget-cpu=znver3" ]
      } else {
        ldflags = [ "-Wl,--lto-O" + lto_opt_level ]
 +      ldflags += [ "-Wl,--lto-CGO" + lto_opt_level ]
